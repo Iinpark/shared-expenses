@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Концепция и записка</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F2F3F5}
+a{color:#1B1D22}a:hover{color:#000}
+.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+</style>
+</head>
+<body>
+<div style="width:960px;min-height:2100px;box-sizing:border-box;padding:88px 96px 96px;background:#F2F3F5;font-family:'Golos Text',system-ui,sans-serif;color:#1B1D22;display:flex;flex-direction:column;gap:80px">
+
+<header style="display:flex;flex-direction:column;gap:18px;max-width:700px">
+<h1 style="margin:0;font-size:44px;line-height:1.1;font-weight:700;letter-spacing:-.02em;text-wrap:balance">Одна цифра, которой можно верить</h1>
+<p style="margin:0;font-size:19px;line-height:1.55;color:#3A3F49;text-wrap:pretty">Концепция интерфейса «Совместных расходов». Каждый экран начинается с ответа на главный вопрос: сколько с меня и сколько мне. И сразу показывает, из чего эта цифра сложилась. Доверие держится на том, что сверка видна всегда.</p>
+</header>
+
+<section style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px;border-top:1px solid #D5D8DE;padding-top:28px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<h2 style="margin:0;font-size:20px;font-weight:600;line-height:1.3">Своя цифра первой</h2>
+<p style="margin:0;font-size:16px;line-height:1.55;color:#3A3F49">В группе первая строка: твой баланс словами, «Тебе вернут 3 166,66 ₽». Под ней переводы, которые касаются тебя, с одной кнопкой. Чужие переводы и расходы ниже.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<h2 style="margin:0;font-size:20px;font-weight:600;line-height:1.3">Сверка на виду</h2>
+<p style="margin:0;font-size:16px;line-height:1.55;color:#3A3F49">Под каждым делением строка «Сумма долей 1 000,00 = расход». Под балансами группы «Сумма балансов 0,00». Не сходится: видно на сколько, сохранить нельзя.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<h2 style="margin:0;font-size:20px;font-weight:600;line-height:1.3">Цвет для смысла, форма для статуса</h2>
+<p style="margin:0;font-size:16px;line-height:1.55;color:#3A3F49">Синий: тебе вернут. Терракотовый: с тебя. Кнопки чёрные, цвет не тратится на декор. Ожидающее погашение обведено пунктиром, учтённое залито. Различимо и в ч/б.</p>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<h2 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.01em">Знаки интерфейса</h2>
+<div style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #DEE1E6;border-radius:10px">
+<div style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #EAECEF">
+<span style="font-size:16px;color:#3A3F49">Тебе вернут</span>
+<span class="n" style="font-size:22px;font-weight:600;color:#1C5DB0">+3 166,66 ₽</span>
+</div>
+<div style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #EAECEF">
+<span style="font-size:16px;color:#3A3F49">С тебя</span>
+<span class="n" style="font-size:22px;font-weight:600;color:#A3480F">−15 000 ₸</span>
+</div>
+<div style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #EAECEF">
+<span style="font-size:16px;color:#3A3F49">Погашение ждёт подтверждения, в балансе не учтено</span>
+<span class="n" style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border:1.5px dashed #6B7180;border-radius:999px;font-size:15px;font-weight:500;color:#3A3F49"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>2 000,00 ₽</span>
+</div>
+<div style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #EAECEF">
+<span style="font-size:16px;color:#3A3F49">Погашение подтверждено, учтено</span>
+<span class="n" style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border:1.5px solid #1B1D22;border-radius:999px;background:#1B1D22;font-size:15px;font-weight:500;color:#FFFFFF"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>4 233,34 ₽</span>
+</div>
+<div style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #EAECEF">
+<span style="font-size:16px;color:#3A3F49">Сверка сходится</span>
+<span class="n" style="display:inline-flex;align-items:center;gap:6px;font-size:15px;color:#3A3F49"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Сумма долей 1 000,00 = расход</span>
+</div>
+<div style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+<span style="font-size:16px;color:#3A3F49">Изменено другим участником, ещё не просмотрено</span>
+<span class="n" style="display:inline-flex;align-items:baseline;gap:8px;font-size:16px"><s style="color:#6B7180">−33,33</s><span style="font-weight:600;color:#A3480F;background:#FFF0C2;padding:1px 6px;border-radius:4px">−100,00</span></span>
+</div>
+</div>
+</section>
+
+<section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0 0 4px;font-size:26px;font-weight:600;letter-spacing:-.01em">Структура</h2>
+<p style="margin:0;font-size:16px;line-height:1.6;color:#3A3F49"><strong style="color:#1B1D22">Группы.</strong> Общий итог по каждой валюте отдельно, ниже открытые и закрытые группы.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:#3A3F49"><strong style="color:#1B1D22">Группа.</strong> Три раздела: «Баланс» (открывается первым), «Расходы», «Лента». Настройки в шапке, только у создателя.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:#3A3F49"><strong style="color:#1B1D22">Телефон.</strong> Вкладки под шапкой, кнопка «Расход» внизу, под большим пальцем. Формы открываются на весь экран.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:#3A3F49"><strong style="color:#1B1D22">Компьютер.</strong> Слева группы, в центре расходы или лента, справа всегда видны балансы и переводы. Формы в модальных окнах.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0 0 4px;font-size:26px;font-weight:600;letter-spacing:-.01em">Расход за три касания</h2>
+<ol style="margin:0;padding-left:22px;font-size:16px;line-height:1.6;color:#3A3F49;display:flex;flex-direction:column;gap:6px">
+<li>«Расход». Форма открывается с фокусом в сумме, цифровая клавиатура уже поднята.</li>
+<li>Сумма. Остальное заполнено: платил ты, сегодня, поровну на всех.</li>
+<li>«Сохранить». Описание, категория и чек по желанию, в той же форме.</li>
+</ol>
+<p style="margin:0;font-size:16px;line-height:1.6;color:#3A3F49">Без описания расход получает имя по времени («Расход в 14:32»). Его легко поправить потом.</p>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:12px;padding-left:24px;border-left:1px solid #C5C9D1">
+<h2 style="margin:0;font-size:20px;font-weight:600">Второй подход: «группа как чат»</h2>
+<p style="margin:0;font-size:16px;line-height:1.6;color:#3A3F49;max-width:720px">Расходы и погашения приходят сообщениями в ленту, баланс закреплён в шапке. Привычно, живо, удобно с телефона. Но цифра теряется в потоке, правка старого расхода тонет в истории, а сверять итоги с компьютера неудобно. Продукт держится на доверии к итогу, поэтому выбран подход «баланс первым». Лента осталась отдельным разделом для разбора, что произошло.</p>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<h2 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.01em">Записка: решения и почему</h2>
+<div style="display:grid;grid-template-columns:210px minmax(0,1fr);row-gap:18px;column-gap:28px;font-size:16px;line-height:1.55">
+<p style="margin:0;font-weight:600">Правило копеек</p>
+<p style="margin:0;color:#3A3F49">Лишние копейки получают участники по порядку в списке группы (порядок вступления), по одной. Правило написано прямо в форме: «1 коп. Борису, он первый в списке». Стабильно и проверяется руками.</p>
+<p style="margin:0;font-weight:600">Баланс словами</p>
+<p style="margin:0;color:#3A3F49">«Тебе вернут» и «С тебя» вместо одного знака: коротко, по-дружески и без слова «долг». Главные цифры без рода, чтобы читались одинаково для всех. В ленте и подсказках глагол берёт род из профиля. Знаки остаются в таблицах, где рядом есть подпись.</p>
+<p style="margin:0;font-weight:600">Ожидающее погашение</p>
+<p style="margin:0;color:#3A3F49">Не меняет баланс, но стоит рядом с ним: «С тебя 3 200,00. Из них 2 000,00 ждут подтверждения Ани». У получателя вопрос с двумя кнопками и подсказка, каким станет баланс после подтверждения.</p>
+<p style="margin:0;font-weight:600">Правка старого расхода</p>
+<p style="margin:0;color:#3A3F49">До сохранения видно, чьи балансы изменятся и как. Если баланс разворачивается, это сказано словами: «Борис переплатил, теперь ему вернут».</p>
+<p style="margin:0;font-weight:600">Живые обновления</p>
+<p style="margin:0;color:#3A3F49">Изменение от другого участника приходит тихим тостом. Изменённые числа подсвечены, старое значение зачёркнуто, пока не просмотрено. Открытую форму не перерисовываем, только плашка сверху.</p>
+<p style="margin:0;font-weight:600">Конфликт правок</p>
+<p style="margin:0;color:#3A3F49">У расхода есть версия. Если её сменили, пока ты правил, сохранение не затирает чужое: видно, что изменил другой, и можно применить свои поля поверх или отменить.</p>
+<p style="margin:0;font-weight:600">Закрытая группа</p>
+<p style="margin:0;color:#3A3F49">Замок в шапке, плашка «Только просмотр». Кнопок добавления и правки нет совсем, а не серые. У создателя есть «Открыть снова».</p>
+<p style="margin:0;font-weight:600">Нет связи</p>
+<p style="margin:0;color:#3A3F49">Плашка со временем последнего обновления. Сохранение недоступно, черновик формы остаётся на устройстве.</p>
+<p style="margin:0;font-weight:600">Приглашение</p>
+<p style="margin:0;color:#3A3F49">Ссылка открывает превью: кто зовёт, кто уже в группе, валюта. Вход по почте и коду из письма, без пароля. Два шага.</p>
+<p style="margin:0;font-weight:600">Письма</p>
+<p style="margin:0;color:#3A3F49">Одна колонка 560 px, системные шрифты, табличная вёрстка, кнопка-ссылка с фоном. Без картинок, читаются с выключенной графикой.</p>
+<p style="margin:0;font-weight:600">Мемы</p>
+<p style="margin:0;color:#3A3F49">Только там, где никто не виноват, или там, где шутка снимает неловкость: «окак» при отклонённом погашении и устаревшей ссылке, «пользуясь случаем» в напоминании, «зеркальные» карточки при конфликте правок, «цунбятрм» и «выхыт» на странице 404. Гифки через GIPHY или Tenor. Все шуточные строки лежат в отдельном словаре текстов и меняются без релиза: мемы быстро стареют.</p>
+<p style="margin:0;font-weight:600">Визуальный язык</p>
+<p style="margin:0;color:#3A3F49">Golos Text: хорошая кириллица и табличные цифры, суммы в столбик выравниваются. Холодные нейтрали, без теней и вложенных карточек: группировка делается отступами и линиями.</p>
+</div>
+</section>
+
+<section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;border-top:1px solid #D5D8DE;padding-top:28px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0;font-size:20px;font-weight:600">Сознательно отложено</h2>
+<ul style="margin:0;padding-left:20px;font-size:16px;line-height:1.6;color:#3A3F49;display:flex;flex-direction:column;gap:4px">
+<li>Очередь расходов без связи. Пока черновик и запрет сохранения.</li>
+<li>Несколько плательщиков в одном расходе.</li>
+<li>Повторяющиеся расходы (аренда квартиры).</li>
+<li>Экспорт отчёта в PDF или CSV. Пока только веб-страница.</li>
+<li>Push-уведомления. Только в приложении и три письма из брифа.</li>
+</ul>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0;font-size:20px;font-weight:600">Где бриф стоит уточнить</h2>
+<ul style="margin:0;padding-left:20px;font-size:16px;line-height:1.6;color:#3A3F49;display:flex;flex-direction:column;gap:4px">
+<li>Если получатель не подтверждает, тот, кто перевёл, застревает. Предлагаю напоминать получателю в приложении через 3 дня и показывать тому, кто перевёл, сколько дней ждёт погашение.</li>
+<li>Закрытие при ожидающих погашениях: предупреждаем создателя и выносим их в отчёт отдельной строкой.</li>
+<li>Не слать напоминание, пока висит погашение на всю сумму.</li>
+</ul>
+</div>
+</section>
+
+</div>
+</body>
+</html>

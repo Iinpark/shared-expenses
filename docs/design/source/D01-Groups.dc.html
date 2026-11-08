@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Группы, компьютер</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F2F3F5}
+a{color:#1B1D22;text-decoration:none}a:hover{color:#000}
+.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="min-height:820px;box-sizing:border-box;background:#F2F3F5;font-family:'Golos Text',system-ui,sans-serif;color:#1B1D22;display:flex;flex-direction:column">
+
+<header style="background:#FFFFFF;border-bottom:1px solid #DEE1E6">
+<div style="max-width:1120px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+<span style="font-size:16px;font-weight:600">Совместные расходы</span>
+<button aria-label="Профиль: Аня" style="height:40px;padding:0 14px 0 4px;border:0;border-radius:999px;background:#F2F3F5;display:flex;align-items:center;gap:8px;font-size:15px"><span style="width:32px;height:32px;border-radius:50%;background:#DCE0E7;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px">А</span>Аня</button>
+</div>
+</header>
+
+<main style="width:100%;max-width:1120px;margin:0 auto;padding:40px 24px 64px;box-sizing:border-box;display:flex;flex-direction:column;gap:40px">
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<h1 style="margin:0;font-size:36px;font-weight:700;letter-spacing:-.02em">Группы</h1>
+<a href="M09-Create.dc.html" style="height:44px;padding:0 18px;border-radius:10px;background:#1B1D22;color:#FFFFFF;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Новая группа</a>
+</div>
+
+<section aria-labelledby="tot" style="display:flex;flex-direction:column;gap:14px">
+<h2 id="tot" style="margin:0;font-size:16px;font-weight:600;color:#3A3F49">По всем группам, по каждой валюте отдельно</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px">
+<div style="background:#FFFFFF;border:1px solid #DEE1E6;border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><span style="font-size:16px">Тебе вернут, рубли</span><span class="n" style="font-size:32px;font-weight:700;letter-spacing:-.015em;color:#1C5DB0">3 166,66 ₽</span></div>
+<div style="border-top:1px solid #EAECEF;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:15px;color:#3A3F49">
+<span class="n" style="display:flex;justify-content:space-between"><span>Поездка в Казань</span><span>+3 166,66</span></span>
+<span class="n" style="display:flex;justify-content:space-between"><span>Новый год 2026, закрыта</span><span>0,00</span></span>
+</div>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DEE1E6;border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><span style="font-size:16px">С тебя, тенге</span><span class="n" style="font-size:32px;font-weight:700;letter-spacing:-.015em;color:#A3480F">15 000 ₸</span></div>
+<div style="border-top:1px solid #EAECEF;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:15px;color:#3A3F49">
+<span class="n" style="display:flex;justify-content:space-between"><span>Квартира на Абая</span><span>−15 000</span></span>
+</div>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="list" style="display:flex;flex-direction:column;gap:12px">
+<h2 id="list" style="margin:0;font-size:16px;font-weight:600;color:#3A3F49">Все группы</h2>
+<div style="overflow-x:auto;background:#FFFFFF;border:1px solid #DEE1E6;border-radius:12px">
+<table style="width:100%;min-width:720px;border-collapse:collapse;font-size:15px">
+<thead><tr style="text-align:left;color:#4F5562;font-size:14px">
+<th style="padding:14px 24px;font-weight:500;border-bottom:1px solid #DEE1E6">Группа</th>
+<th style="padding:14px 16px;font-weight:500;border-bottom:1px solid #DEE1E6">Участники</th>
+<th style="padding:14px 16px;font-weight:500;border-bottom:1px solid #DEE1E6">Последнее</th>
+<th style="padding:14px 24px;font-weight:500;border-bottom:1px solid #DEE1E6;text-align:right">Твой баланс</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="padding:16px 24px;border-bottom:1px solid #EAECEF"><a href="D02-Group.dc.html" style="font-size:16px;font-weight:600">Поездка в Казань</a><span style="display:block;font-size:13px;color:#5F6572;margin-top:2px">₽ · открыта</span></td>
+<td style="padding:16px;border-bottom:1px solid #EAECEF;color:#3A3F49">Аня, Борис, Вика, Гена</td>
+<td style="padding:16px;border-bottom:1px solid #EAECEF;color:#3A3F49">Борис изменил «Такси», сегодня</td>
+<td style="padding:16px 24px;border-bottom:1px solid #EAECEF;text-align:right"><span class="n" style="display:block;font-size:17px;font-weight:600;color:#1C5DB0">+3 166,66</span><span class="n" style="display:inline-block;margin-top:4px;padding:1px 8px;border:1.5px dashed #6B7180;border-radius:999px;font-size:12px;color:#3A3F49">2 000,00 ждут тебя</span></td>
+</tr>
+<tr>
+<td style="padding:16px 24px;border-bottom:1px solid #EAECEF"><a href="D02-Group.dc.html" style="font-size:16px;font-weight:600">Квартира на Абая</a><span style="display:block;font-size:13px;color:#5F6572;margin-top:2px">₸ · открыта</span></td>
+<td style="padding:16px;border-bottom:1px solid #EAECEF;color:#3A3F49">3 участника</td>
+<td style="padding:16px;border-bottom:1px solid #EAECEF;color:#3A3F49">Расход «Коммуналка», 2 ноя</td>
+<td class="n" style="padding:16px 24px;border-bottom:1px solid #EAECEF;text-align:right;font-size:17px;font-weight:600;color:#A3480F">−15 000</td>
+</tr>
+<tr>
+<td style="padding:16px 24px"><a href="D05-Report.dc.html" style="display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:600;color:#3A3F49"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Новый год 2026</a><span style="display:block;font-size:13px;color:#5F6572;margin-top:2px">₽ · закрыта 4 января</span></td>
+<td style="padding:16px;color:#3A3F49">5 участников</td>
+<td style="padding:16px;color:#3A3F49">Итоговый отчёт</td>
+<td style="padding:16px 24px;text-align:right;color:#4F5562">в расчёте</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

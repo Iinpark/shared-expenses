@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Поездка в Казань: лента</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F2F3F5}
+a{color:#1B1D22;text-decoration:none}a:hover{color:#000}
+.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+button{font:inherit;cursor:pointer}
+</style>
+</head>
+<body>
+<div style="width:390px;min-height:1000px;box-sizing:border-box;background:#F2F3F5;font-family:'Golos Text',system-ui,sans-serif;color:#1B1D22;display:flex;flex-direction:column">
+
+<header style="background:#FFFFFF;border-bottom:1px solid #DEE1E6;display:flex;flex-direction:column">
+<div style="height:56px;padding:0 8px;display:flex;align-items:center;justify-content:space-between">
+<a href="M01-Groups.html" aria-label="Назад к группам" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center">
+<span style="font-size:17px;font-weight:600">Поездка в Казань</span>
+<span style="font-size:13px;color:#5F6572">₽ · Аня, Борис, Вика, Гена</span>
+</div>
+<a href="D04-Settings.html" aria-label="Настройки группы" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></a>
+</div>
+<nav aria-label="Разделы группы" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0 12px">
+<a href="M02-Group.html" style="height:44px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#4F5562;border-bottom:2px solid transparent">Баланс</a>
+<a href="M03-Feed.html" style="height:44px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#4F5562;border-bottom:2px solid transparent">Расходы</a>
+<a href="M03-Feed.html" aria-current="page" style="height:44px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;border-bottom:2px solid #1B1D22">Лента</a>
+</nav>
+</header>
+
+<div role="group" aria-label="Фильтр ленты" style="padding:16px 20px 4px;display:flex;gap:8px;flex-wrap:wrap">
+<button aria-pressed="true" style="height:36px;padding:0 14px;border-radius:999px;border:1.5px solid #1B1D22;background:#1B1D22;color:#FFFFFF;font-size:14px;font-weight:500">Всё</button>
+<button aria-pressed="false" style="height:36px;padding:0 14px;border-radius:999px;border:1.5px solid #C5C9D1;background:#FFFFFF;color:#1B1D22;font-size:14px">Расходы</button>
+<button aria-pressed="false" style="height:36px;padding:0 14px;border-radius:999px;border:1.5px solid #C5C9D1;background:#FFFFFF;color:#1B1D22;font-size:14px">Погашения</button>
+<button aria-pressed="false" style="height:36px;padding:0 14px;border-radius:999px;border:1.5px solid #C5C9D1;background:#FFFFFF;color:#1B1D22;font-size:14px">Со мной</button>
+</div>
+
+<ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
+
+<li style="display:flex;flex-direction:column">
+<h2 style="margin:20px 20px 8px;font-size:14px;font-weight:600;color:#4F5562">Сегодня, 8 ноября</h2>
+<div style="background:#FFFBEB;border-top:1px solid #EFE3B8;border-bottom:1px solid #EFE3B8;padding:14px 20px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+<p style="margin:0;font-size:16px;line-height:1.4"><strong>Борис</strong> изменил «Такси из аэропорта»</p>
+<span class="n" style="font-size:13px;color:#5F6572">12:40</span>
+</div>
+<p class="n" style="margin:0;font-size:15px">Сумма <s style="color:#6B7180">1 000,00</s> → <strong>1 200,00</strong></p>
+<div style="display:flex;flex-direction:column;gap:4px;font-size:14px;color:#3A3F49">
+<span style="color:#4F5562">Балансы пересчитаны:</span>
+<span class="n" style="display:flex;justify-content:space-between"><span>Борис</span><span><s style="color:#6B7180">0,00</s> → <span style="color:#1C5DB0;font-weight:600">+133,34</span></span></span>
+<span class="n" style="display:flex;justify-content:space-between"><span>Вика</span><span><s style="color:#6B7180">−33,33</s> → <span style="color:#A3480F;font-weight:600">−100,00</span></span></span>
+<span class="n" style="display:flex;justify-content:space-between"><span>Гена</span><span><s style="color:#6B7180">−3 133,33</s> → <span style="color:#A3480F;font-weight:600">−3 200,00</span></span></span>
+<span class="n" style="display:flex;justify-content:space-between"><span>Ты</span><span style="color:#4F5562">не изменился</span></span>
+</div>
+</div>
+</li>
+
+<li style="display:flex;flex-direction:column">
+<h2 style="margin:20px 20px 8px;font-size:14px;font-weight:600;color:#4F5562">7 ноября</h2>
+<div style="background:#FFFFFF;border-top:1px solid #DEE1E6;border-bottom:1px solid #DEE1E6;padding:14px 20px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+<p style="margin:0;font-size:16px;line-height:1.4"><strong>Гена</strong> отметил перевод тебе</p>
+<span class="n" style="font-size:16px;font-weight:600">2 000,00</span>
+</div>
+<span class="n" style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border:1.5px dashed #6B7180;border-radius:999px;font-size:13px;color:#3A3F49"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>ждёт твоего подтверждения · 21:15</span>
+</div>
+</li>
+
+<li style="display:flex;flex-direction:column">
+<h2 style="margin:20px 20px 8px;font-size:14px;font-weight:600;color:#4F5562">5 ноября</h2>
+<div style="background:#FFFFFF;border-top:1px solid #DEE1E6;border-bottom:1px solid #DEE1E6;padding:14px 20px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+<p style="margin:0;font-size:16px;line-height:1.4"><strong>Борис</strong> перевёл тебе</p>
+<span class="n" style="font-size:16px;font-weight:600">4 233,34</span>
+</div>
+<span class="n" style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border:1.5px solid #1B1D22;border-radius:999px;background:#1B1D22;font-size:13px;color:#FFFFFF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>ты подтвердила · Борис в расчёте</span>
+</div>
+</li>
+
+<li style="display:flex;flex-direction:column">
+<h2 style="margin:20px 20px 8px;font-size:14px;font-weight:600;color:#4F5562">18 октября</h2>
+<div style="background:#FFFFFF;border-top:1px solid #DEE1E6;border-bottom:1px solid #DEE1E6;display:flex;flex-direction:column">
+<div style="padding:14px 20px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid #EAECEF">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><p style="margin:0;font-size:16px;line-height:1.4"><strong>Гена</strong> добавил «Музей, Гена с сыном»</p><span class="n" style="font-size:16px;font-weight:500">2 000,00</span></div>
+<span class="n" style="font-size:13px;color:#5F6572">долями 1 : 1 : 1 : 2 · твоя доля 400,00</span>
+</div>
+<div style="padding:14px 20px;display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><p style="margin:0;font-size:16px;line-height:1.4"><strong>Вика</strong> добавила «Ужин»</p><span class="n" style="font-size:16px;font-weight:500">4 650,00</span></div>
+<span class="n" style="font-size:13px;color:#5F6572">точными суммами · твоя доля 1 200,00</span>
+</div>
+</div>
+</li>
+
+<li style="display:flex;flex-direction:column">
+<h2 style="margin:20px 20px 8px;font-size:14px;font-weight:600;color:#4F5562">16 октября</h2>
+<div style="background:#FFFFFF;border-top:1px solid #DEE1E6;border-bottom:1px solid #DEE1E6;display:flex;flex-direction:column">
+<div style="padding:14px 20px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid #EAECEF">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><p style="margin:0;font-size:16px;line-height:1.4"><strong>Борис</strong> добавил «Такси из аэропорта»</p><span class="n" style="font-size:16px;font-weight:500">1 000,00</span></div>
+<span style="font-size:13px;color:#5F6572">поровну: Борис, Вика, Гена · без тебя</span>
+</div>
+<div style="padding:14px 20px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid #EAECEF">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><p style="margin:0;font-size:16px;line-height:1.4"><strong>Ты</strong> добавила «Квартира на 3 ночи»</p><span class="n" style="font-size:16px;font-weight:500">12 000,00</span></div>
+<span class="n" style="font-size:13px;color:#5F6572">поровну на 4 · по 3 000,00</span>
+</div>
+<div style="padding:14px 20px">
+<p style="margin:0;font-size:15px;color:#4F5562">Ты создала группу и позвала Бориса, Вику и Гену</p>
+</div>
+</div>
+</li>
+</ol>
+
+<div style="height:40px"></div>
+</div>
+</body>
+</html>

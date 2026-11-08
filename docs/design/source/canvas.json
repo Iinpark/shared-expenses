@@ -1,0 +1,255 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "D01-Groups.dc.html": {
+      "expand": "fill",
+      "h": 820,
+      "title": "Компьютер · Группы",
+      "w": 1280,
+      "x": 0,
+      "y": 4200
+    },
+    "D02-Group.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Компьютер · Группа",
+      "w": 1280,
+      "x": 1360,
+      "y": 4200
+    },
+    "D03-Edit.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Компьютер · Правка расхода",
+      "w": 1280,
+      "x": 2720,
+      "y": 4200
+    },
+    "D04-Settings.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "title": "Компьютер · Настройки и закрытие",
+      "w": 1280,
+      "x": 4080,
+      "y": 4200
+    },
+    "D05-Report.dc.html": {
+      "expand": "fill",
+      "h": 1200,
+      "title": "Компьютер · Итоговый отчёт",
+      "w": 1280,
+      "x": 5440,
+      "y": 4200
+    },
+    "E01-Invite.dc.html": {
+      "h": 800,
+      "title": "Письмо · Приглашение",
+      "w": 640,
+      "x": 0,
+      "y": 7200
+    },
+    "E02-Reminder.dc.html": {
+      "h": 860,
+      "title": "Письмо · Пора рассчитаться",
+      "w": 640,
+      "x": 720,
+      "y": 7200
+    },
+    "E03-Closed.dc.html": {
+      "h": 1060,
+      "title": "Письмо · Группа закрыта",
+      "w": 640,
+      "x": 1440,
+      "y": 7200
+    },
+    "M01-Groups.dc.html": {
+      "h": 844,
+      "title": "Телефон · Группы и общий итог",
+      "w": 390,
+      "x": 0,
+      "y": 2500
+    },
+    "M02-Group.dc.html": {
+      "h": 1340,
+      "title": "Телефон · Группа: баланс",
+      "w": 390,
+      "x": 470,
+      "y": 2500
+    },
+    "M03-Feed.dc.html": {
+      "h": 1000,
+      "title": "Телефон · Лента",
+      "w": 390,
+      "x": 940,
+      "y": 2500
+    },
+    "M04-Add-Equal.dc.html": {
+      "h": 1060,
+      "title": "Телефон · Расход: поровну",
+      "w": 390,
+      "x": 1410,
+      "y": 2500
+    },
+    "M05-Add-Shares.dc.html": {
+      "h": 1060,
+      "title": "Телефон · Расход: долями",
+      "w": 390,
+      "x": 1880,
+      "y": 2500
+    },
+    "M06-Add-Exact.dc.html": {
+      "h": 1060,
+      "title": "Телефон · Расход: точными суммами",
+      "w": 390,
+      "x": 2350,
+      "y": 2500
+    },
+    "M07-Settle.dc.html": {
+      "h": 844,
+      "title": "Телефон · Гена отмечает погашение",
+      "w": 390,
+      "x": 2820,
+      "y": 2500
+    },
+    "M08-Confirm.dc.html": {
+      "h": 900,
+      "title": "Телефон · Аня подтверждает",
+      "w": 390,
+      "x": 3290,
+      "y": 2500
+    },
+    "M09-Create.dc.html": {
+      "h": 1100,
+      "title": "Телефон · Новая группа и приглашение",
+      "w": 390,
+      "x": 3760,
+      "y": 2500
+    },
+    "M10-Invite.dc.html": {
+      "h": 844,
+      "title": "Телефон · Страница приглашения",
+      "w": 390,
+      "x": 4230,
+      "y": 2500
+    },
+    "M11-NotFound.dc.html": {
+      "h": 844,
+      "title": "Телефон · Страницы нет",
+      "w": 390,
+      "x": 4700,
+      "y": 2500
+    },
+    "M12-InviteExpired.dc.html": {
+      "h": 844,
+      "title": "Телефон · Приглашение устарело",
+      "w": 390,
+      "x": 5170,
+      "y": 2500
+    },
+    "Main.dc.html": {
+      "h": 2100,
+      "title": "Концепция и записка",
+      "w": 960,
+      "x": 0,
+      "y": 0
+    },
+    "S01-Settlements.dc.html": {
+      "h": 980,
+      "title": "Состояния · Погашения",
+      "w": 1780,
+      "x": 0,
+      "y": 5800
+    },
+    "S02-Balances.dc.html": {
+      "h": 980,
+      "title": "Состояния · Балансы и пустые",
+      "w": 1780,
+      "x": 1860,
+      "y": 5800
+    },
+    "S03-Live.dc.html": {
+      "h": 1000,
+      "title": "Состояния · Изменения, связь, закрытие",
+      "w": 2210,
+      "x": 3720,
+      "y": 5800
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-08T12:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "secPhone",
+    "secDesk",
+    "secStates",
+    "secMail"
+  ],
+  "notes": {
+    "secDesk": {
+      "kind": "title1",
+      "maxW": 6720,
+      "text": "Компьютер",
+      "w": 240,
+      "x": 0,
+      "y": 3940
+    },
+    "secMail": {
+      "kind": "title1",
+      "maxW": 2080,
+      "text": "Письма",
+      "w": 240,
+      "x": 0,
+      "y": 6940
+    },
+    "secPhone": {
+      "kind": "title1",
+      "maxW": 5560,
+      "text": "Телефон",
+      "w": 240,
+      "x": 0,
+      "y": 2240
+    },
+    "secStates": {
+      "kind": "title1",
+      "maxW": 5930,
+      "text": "Состояния",
+      "w": 240,
+      "x": 0,
+      "y": 5540
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "M01-Groups.dc.html",
+    "M02-Group.dc.html",
+    "M03-Feed.dc.html",
+    "M04-Add-Equal.dc.html",
+    "M05-Add-Shares.dc.html",
+    "M06-Add-Exact.dc.html",
+    "M07-Settle.dc.html",
+    "M08-Confirm.dc.html",
+    "M09-Create.dc.html",
+    "M10-Invite.dc.html",
+    "M11-NotFound.dc.html",
+    "M12-InviteExpired.dc.html",
+    "D01-Groups.dc.html",
+    "D02-Group.dc.html",
+    "D03-Edit.dc.html",
+    "D04-Settings.dc.html",
+    "D05-Report.dc.html",
+    "S01-Settlements.dc.html",
+    "S02-Balances.dc.html",
+    "S03-Live.dc.html",
+    "E01-Invite.dc.html",
+    "E02-Reminder.dc.html",
+    "E03-Closed.dc.html"
+  ],
+  "pages": [],
+  "title": "Совместные расходы"
+}

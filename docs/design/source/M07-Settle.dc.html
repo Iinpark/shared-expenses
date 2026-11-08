@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Отметить перевод</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F2F3F5}
+a{color:#1B1D22;text-decoration:none}a:hover{color:#000}
+.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+button,input{font:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width:390px;height:844px;box-sizing:border-box;position:relative;overflow:hidden;background:#F2F3F5;font-family:'Golos Text',system-ui,sans-serif;color:#1B1D22">
+
+<div aria-hidden="true" style="display:flex;flex-direction:column">
+<div style="height:100px;background:#FFFFFF;border-bottom:1px solid #DEE1E6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:17px;font-weight:600">Поездка в Казань</span><span style="font-size:13px;color:#5F6572">вид Гены</span></div>
+<div style="padding:28px 20px;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:16px;color:#3A3F49">С тебя</span>
+<span class="n" style="font-size:44px;font-weight:700;letter-spacing:-.02em;color:#A3480F">3 200,00 ₽</span>
+<span style="font-size:15px;color:#4F5562">Ане 3 166,66 · Борису 33,34</span>
+</div>
+</div>
+
+<div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,28,.48)"></div>
+
+<section role="dialog" aria-modal="true" aria-labelledby="t" style="position:absolute;left:0;right:0;bottom:0;background:#FFFFFF;border-radius:20px 20px 0 0;padding:10px 20px 28px;display:flex;flex-direction:column;gap:18px">
+<span aria-hidden="true" style="align-self:center;width:40px;height:4px;border-radius:2px;background:#C5C9D1"></span>
+<div style="display:flex;align-items:center;justify-content:space-between">
+<h1 id="t" style="margin:0;font-size:22px;font-weight:700">Ты переводишь Ане</h1>
+<button aria-label="Закрыть" style="width:44px;height:44px;margin-right:-10px;border:0;background:transparent;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+
+<p style="margin:-8px 0 0;font-size:15px;line-height:1.5;color:#3A3F49">Приложение не переводит деньги. Передай их как удобно, наличными или в банке, и отметь здесь. Аня подтвердит, что они пришли.</p>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<label for="sum" style="font-size:14px;color:#4F5562">Сколько, ₽</label>
+<input id="sum" class="n" value="2 000,00" inputmode="decimal" style="border:0;border-bottom:2px solid #1B1D22;padding:2px 0 8px;font-size:36px;font-weight:700;letter-spacing:-.02em;outline:none;background:transparent;color:#1B1D22">
+<div role="group" aria-label="Быстрый выбор" style="display:flex;gap:8px;flex-wrap:wrap">
+<button style="height:36px;padding:0 12px;border-radius:999px;border:1.5px solid #C5C9D1;background:#FFFFFF;font-size:14px" class="n">Всё 3 166,66</button>
+<button aria-pressed="true" style="height:36px;padding:0 12px;border-radius:999px;border:1.5px solid #1B1D22;background:#1B1D22;color:#FFFFFF;font-size:14px;font-weight:500">Часть</button>
+</div>
+</div>
+
+<div style="padding:14px 16px;border-radius:10px;background:#F2F3F5;display:grid;grid-template-columns:1fr auto;row-gap:6px;font-size:15px" class="n">
+<span style="color:#3A3F49">С тебя Ане сейчас</span><span>3 166,66</span>
+<span style="color:#3A3F49">Отмечаешь</span><span>− 2 000,00</span>
+<span style="font-weight:600;padding-top:6px;border-top:1px solid #DEE1E6">Останется после подтверждения</span><span style="font-weight:700;padding-top:6px;border-top:1px solid #DEE1E6;color:#A3480F">1 166,66</span>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<a href="S01-Settlements.dc.html" style="height:56px;border-radius:14px;background:#1B1D22;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600">Отметить перевод <span class="n" style="margin-left:6px">2 000,00 ₽</span></a>
+<p style="margin:0;text-align:center;font-size:13px;color:#5F6572">До подтверждения баланс не изменится</p>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
