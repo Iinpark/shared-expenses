@@ -1,0 +1,20 @@
+{
+  "name": "shared-expenses",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "dev": "concurrently -k -n server,web -c blue,magenta \"pnpm --filter @se/server dev\" \"pnpm --filter @se/web dev\"",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.7",
+    "typescript": "7.0.2"
+  }
+}

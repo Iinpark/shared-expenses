@@ -1,0 +1,18 @@
+# Текст тестового задания (не коммитим)
+TASKS.md
+
+# Зависимости и сборка
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Локальные настройки и загрузки
+.env
+.env.local
+apps/server/uploads/
+
+# Системное
+.DS_Store
+
+# Локальные настройки Claude Code
+.claude/
