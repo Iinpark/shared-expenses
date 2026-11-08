@@ -12,7 +12,9 @@ import { registerErrorHandler } from './lib/errors.js';
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({
-    logger: opts.logger ? { transport: { target: 'pino-pretty' } } : false,
+    logger: opts.logger ? { transport: { target: 'pino-pretty', options: { ignore: 'pid,hostname' } } } : false,
+    // Логи на каждый запрос в dev только мешают; ошибки всё равно пишутся.
+    disableRequestLogging: true,
   });
 
   registerErrorHandler(app);
