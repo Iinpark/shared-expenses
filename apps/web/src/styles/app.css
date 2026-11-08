@@ -19,6 +19,9 @@
   --minus-strong: #8a3a0a;
   --minus-tint: #fdf3ec;
   --minus-tint-border: #ebc9b2;
+  --share-other: #b9bfca;
+  --changed: #fff0c2;
+  --changed-ink: #5c4500;
   --banner: #2a2d34;
   --overlay: rgba(20, 22, 28, 0.48);
 
@@ -750,6 +753,407 @@ p {
   text-overflow: ellipsis;
 }
 
+
+/* Общий итог по валютам (M01 / D01) */
+.totals {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.totals__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+}
+.totals__item {
+  display: flex;
+  flex-direction: column;
+}
+.totals__amount {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Экран группы (M02 / D02) ---------- */
+
+.group-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding-bottom: 112px;
+}
+.balance-panel {
+  display: flex;
+  flex-direction: column;
+}
+.hero {
+  padding: 28px var(--gutter) 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hero__label {
+  font-size: 17px;
+  color: var(--ink-2);
+}
+.hero__amount {
+  font-size: 44px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.hero__sub {
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.panel-section {
+  margin-top: 28px;
+}
+.panel-section__head {
+  padding: 0 var(--gutter) 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.panel-note {
+  padding: 10px var(--gutter) 0;
+}
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.transfer {
+  font-size: 16px;
+}
+.transfer--to-me {
+  background: var(--plus-tint);
+}
+.transfer__arrow {
+  margin: 0 8px;
+  color: var(--ink-4);
+}
+.transfer__amount,
+.balance-amount {
+  font-size: 17px;
+  font-weight: 600;
+}
+.expense-row {
+  align-items: flex-start;
+}
+.expense-row__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.expense-row__amount {
+  font-size: 16px;
+  font-weight: 600;
+}
+.add-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px var(--gutter) calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  z-index: 10;
+}
+.expenses-table .num {
+  text-align: right;
+}
+.expenses-table td {
+  vertical-align: middle;
+}
+.expenses-table__title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.expenses-table tfoot td {
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---------- Форма расхода (M04–M06, D03) ---------- */
+
+.expense-form {
+  background: var(--surface);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.amount-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.amount-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  padding: 4px 0 8px;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+  border-radius: 0;
+}
+.amount-input:focus {
+  outline: none;
+}
+.amount-was {
+  font-size: 13px;
+  color: var(--changed-ink);
+}
+.cat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cat-chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--control-border);
+  background: var(--surface);
+  font-size: 14px;
+}
+.cat-chip[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  font-weight: 500;
+}
+.boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 8px;
+}
+.box {
+  position: relative;
+  border: 1.5px solid var(--control-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 56px;
+  background: var(--surface);
+}
+.box:focus-within {
+  border-color: var(--ink);
+}
+.box__label {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.box select,
+.box input {
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 500;
+  background: transparent;
+  width: 100%;
+  min-width: 0;
+}
+.box select:focus,
+.box input:focus {
+  outline: none;
+}
+.split-list {
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  margin: 0 calc(-1 * var(--gutter));
+}
+.split-row {
+  min-height: 56px;
+  padding: 8px var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.split-row:last-child {
+  border-bottom: 0;
+}
+.split-row__name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+}
+.split-row__name input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--ink);
+  margin: 0;
+}
+.split-row--off .split-row__name {
+  color: var(--ink-4);
+}
+.split-row__amount {
+  font-weight: 600;
+  font-size: 16px;
+}
+.extra-cent {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid var(--control-border);
+  border-radius: 10px;
+  height: 40px;
+}
+.stepper button {
+  width: 40px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+}
+.stepper span {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 600;
+}
+.stepper--me {
+  border-color: var(--ink);
+}
+.exact-input {
+  width: 130px;
+  height: 44px;
+  border: 1.5px solid var(--control-border);
+  border-radius: 10px;
+  padding: 0 12px;
+  text-align: right;
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+}
+.exact-input:focus {
+  outline: none;
+  border: 2px solid var(--ink);
+  padding: 0 11.5px;
+}
+.reconcile {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.reconcile__ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 15px;
+}
+.reconcile--error {
+  background: var(--minus-tint);
+  border: 1.5px solid var(--minus);
+}
+.reconcile__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reconcile__line--strong {
+  color: var(--minus-strong);
+  font-weight: 700;
+}
+.reconcile .btn {
+  border-color: var(--minus);
+  color: var(--minus-strong);
+  height: 40px;
+  font-weight: 600;
+}
+.share-bar {
+  display: flex;
+  gap: 3px;
+  height: 8px;
+}
+.share-bar span {
+  border-radius: 4px;
+  background: var(--share-other);
+}
+.share-bar span.me {
+  background: var(--ink);
+}
+.dashed-btn {
+  border-style: dashed;
+}
+.preview {
+  border-radius: 12px;
+  background: var(--bg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.preview th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--ink-3);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.preview td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.preview tr:last-child td {
+  border-bottom: 0;
+}
+.preview .num {
+  text-align: right;
+}
+.struck {
+  text-decoration: line-through;
+  color: var(--muted);
+  font-weight: 400;
+  margin-right: 6px;
+  font-size: 13px;
+}
+.danger-link {
+  color: var(--minus);
+  background: none;
+  border: 0;
+  padding: 0;
+  font-weight: 500;
+  font-size: 15px;
+}
+.form-error {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--minus-tint);
+  color: var(--minus-strong);
+  font-size: 14px;
+}
+
 /* ---------- Компьютер ---------- */
 
 @media (min-width: 900px) {
@@ -772,9 +1176,64 @@ p {
     width: 100%;
     margin: 0 auto;
   }
+  .group-grid {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 24px;
+    padding: 20px 24px 64px;
+    align-items: start;
+  }
+  .group-grid .list,
+  .balance-panel .list {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .balance-panel {
+    --gutter: 16px;
+  }
+  .balance-panel .hero {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .balance-panel .hero__amount {
+    font-size: 40px;
+  }
+  .balance-panel .panel-section {
+    margin-top: 24px;
+  }
+  .balance-panel .panel-section__head {
+    padding: 0 0 8px;
+  }
+  .balance-panel .panel-note {
+    padding: 8px 0 0;
+  }
+  .tabs a.tab-desktop-active {
+    color: var(--ink);
+    font-weight: 600;
+    border-bottom-color: var(--ink);
+  }
+  .tabs {
+    grid-template-columns: repeat(2, max-content);
+    gap: 24px;
+    padding: 0 24px;
+  }
+  .expense-form {
+    min-height: auto;
+    max-width: 680px;
+    margin: 40px auto;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
 }
 
 @media (max-width: 899px) {
+  /* Над кнопкой «Расход», которая прибита к низу экрана */
+  .toast {
+    bottom: 96px;
+  }
   .desktop-only {
     display: none !important;
   }
