@@ -11,7 +11,7 @@ export async function makeApp() {
 /** Чистит все таблицы между тестами. */
 export async function resetDb() {
   await db.execute(
-    dsql`truncate table email_outbox, invites, group_members, groups, sessions, login_codes, users restart identity cascade`,
+    dsql`truncate table expense_shares, expenses, email_outbox, invites, group_members, groups, sessions, login_codes, users restart identity cascade`,
   );
 }
 

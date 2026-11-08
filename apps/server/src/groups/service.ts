@@ -5,6 +5,7 @@ import type { Tx } from '../db/client.js';
 import { groupMembers, groups, invites, users } from '../db/schema.js';
 import { randomToken } from '../lib/crypto.js';
 import { conflict, forbidden, notFound } from '../lib/errors.js';
+import { balancesByGroup, hasExpenses } from '../expenses/service.js';
 import { enqueueEmail } from '../mail/outbox.js';
 import { inviteEmail } from '../mail/templates.js';
 
@@ -141,11 +142,6 @@ export async function createGroup(
   return group!;
 }
 
-/** Есть ли в группе расходы. Таблица расходов появится на следующем этапе; до тех пор валюту можно менять. */
-export async function hasExpenses(_tx: Tx, _groupId: string): Promise<boolean> {
-  return false;
-}
-
 export async function groupDto(tx: Tx, group: GroupRow, userId: string): Promise<GroupDto> {
   const members = await listMembers(tx, group.id, group.ownerId);
   const pending = await tx
@@ -163,6 +159,7 @@ export async function groupDto(tx: Tx, group: GroupRow, userId: string): Promise
     reminderDays: group.reminderDays,
     memberNames: members.map((m) => m.name),
     memberCount: members.length,
+    myBalance: (await balancesByGroup(tx, [group.id])).get(group.id)!.get(userId) ?? 0,
     members,
     pendingInvites: pending
       .filter((p) => p.email && p.createdAt.getTime() + INVITE_TTL_MS > Date.now())
@@ -189,6 +186,7 @@ export async function listGroups(tx: Tx, userId: string): Promise<GroupSummaryDt
     .orderBy(asc(groupMembers.joinOrder));
   const byGroup = new Map<string, string[]>();
   for (const n of names) byGroup.set(n.groupId, [...(byGroup.get(n.groupId) ?? []), n.name ?? n.email]);
+  const balances = await balancesByGroup(tx, ids);
 
   return rows.map(({ group }) => {
     const memberNames = byGroup.get(group.id) ?? [];
@@ -200,6 +198,7 @@ export async function listGroups(tx: Tx, userId: string): Promise<GroupSummaryDt
       closedAt: group.closedAt?.toISOString() ?? null,
       memberNames,
       memberCount: memberNames.length,
+      myBalance: balances.get(group.id)!.get(userId) ?? 0,
     };
   });
 }

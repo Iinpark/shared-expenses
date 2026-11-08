@@ -7,6 +7,7 @@ import { authRoutes } from './auth/routes.js';
 import { loadUser, SESSION_COOKIE } from './auth/session.js';
 import { config } from './config.js';
 import { sql } from './db/client.js';
+import { expenseRoutes } from './expenses/routes.js';
 import { groupRoutes } from './groups/routes.js';
 import { registerErrorHandler } from './lib/errors.js';
 
@@ -39,6 +40,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
 
   await app.register(authRoutes);
   await app.register(groupRoutes);
+  await app.register(expenseRoutes);
 
   // Канал реалтайм-событий. Пока только приветствие; события групп появятся позже.
   app.get('/ws', { websocket: true }, (socket) => {

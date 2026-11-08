@@ -13,12 +13,12 @@ import {
   createGroup,
   getMemberGroup,
   groupDto,
-  hasExpenses,
   inviteByEmail,
   listGroups,
   previewInvite,
   rotateLink,
 } from './service.js';
+import { hasExpenses } from '../expenses/service.js';
 
 const idParams = z.object({ id: z.uuid({ message: 'Группа не найдена' }) });
 const tokenParams = z.object({ token: z.string().min(1).max(64) });
