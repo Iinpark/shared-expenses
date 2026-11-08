@@ -128,8 +128,8 @@
     "inviteExpiredTitle": "Окак.",
     "reminderOpener": "пользуясь случаем,",
     "notFoundTitle": "Цунбятрм.",
-    "notFoundButton": "Выхыт к группам",
-    "inviteExpiredButton": "Выхыт к своим группам",
+    "notFoundButton": "К группам",
+    "inviteExpiredButton": "К своим группам",
     "conflictPattern": "«Зеркальные» карточки: две одинаковые карточки расхода рядом с разными подписями",
     "gifRejected": "[гифка «окак»] через GIPHY/Tenor"
   },
