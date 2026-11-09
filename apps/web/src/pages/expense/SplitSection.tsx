@@ -1,6 +1,6 @@
 import type { CurrencyCode, GroupDto, MemberDto, ShareResult } from '@se/shared';
 import { copy } from '../../lib/copy.js';
-import { money } from '../../lib/expenses.js';
+import { money } from '../../lib/format.js';
 import type { Draft } from './draft.js';
 import { Reconcile } from './Reconcile.js';
 

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
 import { ToastProvider } from './components/Toast.js';
-import { useMe } from './lib/session.js';
+import { useMe } from './lib/queries/index.js';
 import { CreateGroupPage } from './pages/CreateGroupPage.js';
 import { ExpensePage } from './pages/ExpensePage.js';
 import { GroupPage } from './pages/GroupPage.js';

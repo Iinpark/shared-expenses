@@ -11,6 +11,7 @@ import { and, asc, desc, eq, inArray, isNull, sql as dsql } from 'drizzle-orm';
 import type { z } from 'zod';
 import type { Tx } from '../db/client.js';
 import { expenses, expenseShares, groupMembers, groups } from '../db/schema.js';
+import { recordEvent, snapshot } from '../events/service.js';
 import { conflict, HttpError, notFound } from '../lib/errors.js';
 
 type GroupRow = typeof groups.$inferSelect;
@@ -138,7 +139,9 @@ export async function createExpense(tx: Tx, group: GroupRow, userId: string, inp
     })
     .returning();
   await writeShares(tx, must(row).id, shares);
-  return expenseDto(tx, must(row));
+  const dto = await expenseDto(tx, must(row));
+  await recordEvent(tx, group.id, userId, { type: 'expense_created', after: snapshot(dto) });
+  return dto;
 }
 
 /** Конфликт версий: в ответе то, что сейчас в базе, чтобы клиент показал обе версии. */
@@ -162,6 +165,9 @@ export async function updateExpense(
   input: ExpenseInput & { version: number },
 ): Promise<ExpenseDto> {
   const shares = await prepare(tx, group.id, input);
+  // Снимок «до» для ленты и тоста. Группа заблокирована вызывающим, поэтому он не устареет до UPDATE.
+  const [current] = await tx.select().from(expenses).where(eq(expenses.id, expenseId));
+  const before = current ? await expenseDto(tx, current) : null;
   const [row] = await tx
     .update(expenses)
     .set({
@@ -181,7 +187,9 @@ export async function updateExpense(
   if (!row) throw await versionConflict(tx, expenseId);
   await tx.delete(expenseShares).where(eq(expenseShares.expenseId, expenseId));
   await writeShares(tx, expenseId, shares);
-  return expenseDto(tx, row);
+  const after = await expenseDto(tx, row);
+  if (before) await recordEvent(tx, group.id, userId, { type: 'expense_updated', before: snapshot(before), after: snapshot(after) });
+  return after;
 }
 
 /** Удаление (мягкое). Тоже по версии: нельзя удалить расход, который кто-то только что поменял, не увидев правку. */
@@ -190,8 +198,10 @@ export async function deleteExpense(tx: Tx, expenseId: string, userId: string, v
     .update(expenses)
     .set({ deletedAt: new Date(), updatedBy: userId, updatedAt: new Date(), version: dsql`${expenses.version} + 1` })
     .where(and(eq(expenses.id, expenseId), eq(expenses.version, version), isNull(expenses.deletedAt)))
-    .returning({ id: expenses.id });
+    .returning();
   if (!row) throw await versionConflict(tx, expenseId);
+  // Доли при мягком удалении остаются в базе, поэтому снимок полный.
+  await recordEvent(tx, row.groupId, userId, { type: 'expense_deleted', before: snapshot(await expenseDto(tx, row)) });
 }
 
 /**

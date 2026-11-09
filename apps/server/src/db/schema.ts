@@ -6,6 +6,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -22,6 +23,13 @@ export const genderEnum = pgEnum('gender', ['f', 'm']);
 export const groupStatusEnum = pgEnum('group_status', ['open', 'closed']);
 export const inviteKindEnum = pgEnum('invite_kind', ['link', 'email']);
 export const expenseCategoryEnum = pgEnum('expense_category', ['food', 'transport', 'housing', 'fun', 'other']);
+export const groupEventTypeEnum = pgEnum('group_event_type', [
+  'expense_created',
+  'expense_updated',
+  'expense_deleted',
+  'member_joined',
+  'group_updated',
+]);
 export const splitModeEnum = pgEnum('split_mode', ['equal', 'shares', 'exact']);
 
 /** Деньги: целые минимальные единицы валюты. bigint в базе, number в коде (до 2^53 точно). */
@@ -200,6 +208,30 @@ export const expenseShares = pgTable(
     index('expense_shares_user_idx').on(t.userId),
     check('expense_shares_amount_nonneg', sql`${t.amount} >= 0`),
   ],
+);
+
+// ---------- События группы (лента и реалтайм) ----------
+
+/**
+ * Что произошло в группе. Пишется в той же транзакции, что и само изменение, поэтому лента
+ * никогда не расходится с данными. payload — снимки «до» и «после» (тип GroupEventPayload в @se/shared).
+ * После коммита Postgres рассылает NOTIFY, и сервер отправляет событие участникам по WebSocket.
+ */
+export const groupEvents = pgTable(
+  'group_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    groupId: uuid('group_id')
+      .notNull()
+      .references(() => groups.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => users.id),
+    type: groupEventTypeEnum('type').notNull(),
+    payload: jsonb('payload').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('group_events_group_idx').on(t.groupId, t.createdAt)],
 );
 
 // ---------- Почта ----------

@@ -1,15 +1,13 @@
 import type { GroupSummaryDto } from '@se/shared';
 import { currencySymbol, type CurrencyCode } from '@se/shared';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
 import { ProfileMenu } from '../components/ProfileMenu.js';
-import { api } from '../lib/api.js';
 import { copy } from '../lib/copy.js';
-import { money, moneyCur } from '../lib/expenses.js';
+import { money, moneyCur } from '../lib/format.js';
 import { dayMonth, members } from '../lib/ru.js';
-import { useCurrentUser } from '../lib/session.js';
+import { useCurrentUser, useGroups } from '../lib/queries/index.js';
 
 const symbol = (c: string) => {
   try {
@@ -57,7 +55,7 @@ function Totals({ list }: { list: GroupSummaryDto[] }) {
 /** M01 / D01: список групп с балансом в каждой и общим итогом по валютам. */
 export function GroupsPage() {
   const me = useCurrentUser();
-  const groups = useQuery({ queryKey: ['groups'], queryFn: () => api<GroupSummaryDto[]>('GET', '/api/groups') });
+  const groups = useGroups();
   const list = groups.data ?? [];
   const open = list.filter((g) => g.status === 'open');
   const closed = list.filter((g) => g.status === 'closed');

@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import type { Tx } from '../db/client.js';
 import { groupMembers, groups, invites, users } from '../db/schema.js';
 import { randomToken } from '../lib/crypto.js';
+import { recordEvent } from '../events/service.js';
 import { balancesByGroup, hasExpenses } from '../expenses/service.js';
 import { conflict, forbidden, HttpError, notFound } from '../lib/errors.js';
 import { enqueueEmail } from '../mail/outbox.js';
@@ -61,7 +62,15 @@ async function addMember(tx: Tx, groupId: string, userId: string) {
     .select({ n: dsql<number>`coalesce(max(${groupMembers.joinOrder}), 0) + 1`.mapWith(Number) })
     .from(groupMembers)
     .where(eq(groupMembers.groupId, groupId));
-  await tx.insert(groupMembers).values({ groupId, userId, joinOrder: must(next).n }).onConflictDoNothing();
+  const joined = await tx
+    .insert(groupMembers)
+    .values({ groupId, userId, joinOrder: must(next).n })
+    .onConflictDoNothing()
+    .returning({ userId: groupMembers.userId });
+  if (joined.length) {
+    const [who] = await tx.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, userId));
+    await recordEvent(tx, groupId, userId, { type: 'member_joined', userId, name: who?.name ?? who?.email ?? '' });
+  }
   // Если человека звали по почте, приглашение выполнено.
   await tx
     .update(invites)

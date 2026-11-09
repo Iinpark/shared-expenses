@@ -1,14 +1,12 @@
 import { byGender, type InvitePreviewDto, type Me } from '@se/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
 import { currencyLabel } from '../components/CurrencyPicker.js';
 import { AuthFlow } from '../components/AuthFlow.js';
-import { api, ApiError, errorText } from '../lib/api.js';
 import { copy } from '../lib/copy.js';
 import { joinNames } from '../lib/ru.js';
-import { useMe } from '../lib/session.js';
+import { ApiError, errorText, useAcceptInvite, useInvitePreview, useMe } from '../lib/queries/index.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
 /** M10: приглашение по ссылке. Устаревшая ссылка — M12. */
@@ -16,11 +14,7 @@ export function InvitePage() {
   const { token = '' } = useParams();
   const me = useMe().data;
 
-  const preview = useQuery({
-    queryKey: ['invite', token, me?.id ?? null],
-    queryFn: () => api<InvitePreviewDto>('GET', `/api/invites/${token}`),
-    retry: false,
-  });
+  const preview = useInvitePreview(token);
 
   if (preview.error instanceof ApiError && preview.error.status === 404) return <NotFoundPage />;
   const p = preview.data;
@@ -77,7 +71,7 @@ export function InvitePage() {
 
 /** Кнопка под приглашением: открыть группу, вступить или сначала войти. */
 function InviteAction({ token, preview: p, me }: { token: string; preview: Extract<InvitePreviewDto, { status: 'valid' }>; me: Me | null }) {
-  const qc = useQueryClient();
+  const accept = useAcceptInvite(token);
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -86,8 +80,7 @@ function InviteAction({ token, preview: p, me }: { token: string; preview: Extra
     setBusy(true);
     setError(null);
     try {
-      const { groupId } = await api<{ groupId: string }>('POST', `/api/invites/${token}/accept`);
-      await qc.invalidateQueries({ queryKey: ['groups'] });
+      const { groupId } = await accept.mutateAsync();
       await navigate(`/groups/${groupId}`, { replace: true });
     } catch (err) {
       setError(errorText(err));

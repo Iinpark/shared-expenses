@@ -1,13 +1,10 @@
-import { currencySymbol, EXPENSE_CATEGORIES, formatAmount, type CurrencyCode, type ExpenseDto, type GroupDto } from '@se/shared';
-import { useQuery } from '@tanstack/react-query';
+import { canEditExpense, currencySymbol, EXPENSE_CATEGORIES, formatAmount, type CurrencyCode, type ExpenseDto, type GroupDto } from '@se/shared';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Icon } from '../components/Icon.js';
-import { api, ApiError } from '../lib/api.js';
 import { copy, fill } from '../lib/copy.js';
-import { CATEGORY_LABELS, money, moneyCur, today, useBalances } from '../lib/expenses.js';
-import { useGroup } from '../lib/groups.js';
-import { useCurrentUser } from '../lib/session.js';
+import { CATEGORY_LABELS, money, moneyCur, today } from '../lib/format.js';
+import { ApiError, useBalances, useCurrentUser, useExpense, useGroup } from '../lib/queries/index.js';
 import { useExpenseDraft, type Draft } from './expense/draft.js';
 import { useExpenseMutations, type Mutations } from './expense/mutations.js';
 import { ConflictNotice, EditPreview } from './expense/Notices.js';
@@ -17,33 +14,34 @@ import { NotFoundPage } from './NotFoundPage.js';
 /** M04–M06 (новый расход) и D03 (правка). Маршруты /groups/:id/expenses/new и /groups/:id/expenses/:expenseId. */
 export function ExpensePage() {
   const { id = '', expenseId } = useParams();
+  const me = useCurrentUser();
   const group = useGroup(id);
-  const existing = useQuery({
-    queryKey: ['expense', expenseId],
-    queryFn: () => api<ExpenseDto>('GET', `/api/expenses/${expenseId}`),
-    enabled: !!expenseId,
-    retry: false,
-    // Пока форма открыта, расход не перезапрашиваем: иначе версия тихо обновится под старыми полями
-    // и правка затрёт чужую без 409. Свежие данные — при следующем открытии формы.
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
+  const existing = useExpense(expenseId);
 
   const notFound = (e: unknown) => e instanceof ApiError && e.status === 404;
   if (notFound(group.error) || notFound(existing.error)) return <NotFoundPage />;
   if (!group.data || (expenseId && !existing.data)) return <p className="hint" style={{ padding: 20 }}>Загружаем…</p>;
-  if (group.data.status === 'closed') {
-    return (
-      <div className="solo">
-        <p className="empty__title">Группа закрыта, расходы не изменить.</p>
-        <Link to={`/groups/${id}`} className="btn btn--outline" style={{ marginTop: 16 }}>
-          К группе
-        </Link>
-      </div>
-    );
-  }
+  const blocked = readOnlyReason(group.data, existing.data, me.id);
+  if (blocked) return <ReadOnly groupId={id} text={blocked} />;
   return <ExpenseForm key={existing.data?.id ?? 'new'} group={group.data} expense={existing.data} />;
+}
+
+/** Почему форму не показываем: группа закрыта или расход чужой (править может плативший, автор или создатель группы). */
+function readOnlyReason(g: GroupDto, expense: ExpenseDto | undefined, meId: string): string | null {
+  if (g.status === 'closed') return 'Группа закрыта, расходы не изменить.';
+  if (expense && !canEditExpense(expense, meId, g.ownerId)) return 'Изменить расход может тот, кто платил, кто его внёс, или создатель группы.';
+  return null;
+}
+
+function ReadOnly({ groupId, text }: { groupId: string; text: string }) {
+  return (
+    <div className="solo">
+      <p className="empty__title">{text}</p>
+      <Link to={`/groups/${groupId}`} className="btn btn--outline" style={{ marginTop: 16 }}>
+        К группе
+      </Link>
+    </div>
+  );
 }
 
 function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: ExpenseDto }) {

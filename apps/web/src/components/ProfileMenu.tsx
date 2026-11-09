@@ -1,20 +1,18 @@
 import type { Me } from '@se/shared';
-import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { api } from '../lib/api.js';
+import { useLogout } from '../lib/queries/index.js';
 import { Avatar } from './Avatar.js';
 
 /** Кнопка профиля в шапке. Пока в меню только выход. */
 export function ProfileMenu({ me, compact }: { me: Me; compact?: boolean }) {
   const [open, setOpen] = useState(false);
-  const qc = useQueryClient();
+  const logoutMutation = useLogout();
   const navigate = useNavigate();
   const name = me.name ?? me.email;
 
   const logout = async () => {
-    await api('POST', '/api/auth/logout');
-    qc.clear();
+    await logoutMutation.mutateAsync();
     void navigate('/login', { replace: true });
   };
 

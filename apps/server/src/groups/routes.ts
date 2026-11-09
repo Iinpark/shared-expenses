@@ -19,9 +19,23 @@ import {
   previewInvite,
   rotateLink,
 } from './service.js';
+import { listEvents, recordEvent } from '../events/service.js';
 import { hasExpenses } from '../expenses/service.js';
 
+/** Что именно поменялось в настройках: для ленты «Аня переименовала группу». */
+function groupChanges(
+  group: { name: string; currency: string; reminderDays: number },
+  patch: { name?: string; currency?: string; reminderDays?: number },
+) {
+  const fields = ['name', 'currency', 'reminderDays'] as const;
+  return fields.flatMap((field) => {
+    const to = patch[field];
+    return to !== undefined && to !== group[field] ? [{ field, from: group[field], to }] : [];
+  });
+}
+
 const idParams = z.object({ id: z.uuid({ message: 'Группа не найдена' }) });
+const eventsQuery = z.object({ before: z.uuid().optional(), limit: z.coerce.number().int().min(1).max(100).default(50) });
 const tokenParams = z.object({ token: z.string().min(1).max(64) });
 
 export function groupRoutes(app: FastifyInstance): Promise<void> {
@@ -58,7 +72,20 @@ export function groupRoutes(app: FastifyInstance): Promise<void> {
         throw conflict('currency_locked', 'В группе уже есть расходы, валюту не поменять');
       }
       const [updated] = await tx.update(groups).set(patch).where(eq(groups.id, id)).returning();
+      const changes = groupChanges(group, patch);
+      if (changes.length) await recordEvent(tx, id, user.id, { type: 'group_updated', changes });
       return groupDto(tx, must(updated), user.id);
+    });
+  });
+
+  /** Лента группы (M03): от новых к старым, по 50 событий, дальше — с курсором before. */
+  app.get('/api/groups/:id/events', async (req) => {
+    const user = requireProfile(req);
+    const { id } = parse(idParams, req.params);
+    const { before, limit } = parse(eventsQuery, req.query);
+    return db.transaction(async (tx) => {
+      await getMemberGroup(tx, id, user.id);
+      return listEvents(tx, id, before ?? null, limit);
     });
   });
 

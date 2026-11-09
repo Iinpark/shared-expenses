@@ -1,14 +1,12 @@
-import { byGender, currencySymbol, naiveTransferCount, type BalancesDto, type CurrencyCode, type ExpenseDto, type GroupDto, type MemberDto, type Transfer } from '@se/shared';
+import { byGender, canEditExpense, currencySymbol, naiveTransferCount, type BalancesDto, type CurrencyCode, type ExpenseDto, type GroupDto, type MemberDto, type Transfer } from '@se/shared';
 import { Link, NavLink, useParams } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
 import { useToast } from '../components/Toast.js';
-import { ApiError } from '../lib/api.js';
 import { copy, fill } from '../lib/copy.js';
-import { CATEGORY_LABELS, countGenitive, money, moneyCur, shortDate, splitLabel, useBalances, useExpenses } from '../lib/expenses.js';
-import { inviteLink, useGroup } from '../lib/groups.js';
+import { CATEGORY_LABELS, countGenitive, inviteLink, money, moneyCur, shortDate, splitLabel } from '../lib/format.js';
+import { ApiError, useBalances, useCurrentUser, useExpenses, useGroup } from '../lib/queries/index.js';
 import { dayMonth, joinNames, plural } from '../lib/ru.js';
-import { useCurrentUser } from '../lib/session.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
 type Tab = 'balance' | 'expenses' | 'feed';
@@ -276,6 +274,9 @@ function myShareText(e: ExpenseDto, g: GroupDto, meId: string): string {
   return share ? fill(copy.expense.yourShare, { amount: money(share.amount, g.currency) }) : copy.expense.notYou;
 }
 
+/** Ссылку на форму правки даём, только если группа открыта и человеку можно править этот расход. */
+const editable = (e: ExpenseDto, g: GroupDto, meId: string) => g.status === 'open' && canEditExpense(e, meId, g.ownerId);
+
 function ExpenseRow({ e, g, meId }: { e: ExpenseDto; g: GroupDto; meId: string }) {
   const body = (
     <>
@@ -289,7 +290,7 @@ function ExpenseRow({ e, g, meId }: { e: ExpenseDto; g: GroupDto; meId: string }
       </div>
     </>
   );
-  return g.status === 'open' ? (
+  return editable(e, g, meId) ? (
     <Link to={`/groups/${g.id}/expenses/${e.id}`} className="row expense-row">
       {body}
     </Link>
@@ -334,7 +335,7 @@ function ExpensesPanel({ g, meId, expenses, balances }: Ctx) {
               return (
                 <tr key={e.id}>
                   <td>
-                    {g.status === 'open' ? (
+                    {editable(e, g, meId) ? (
                       <Link to={`/groups/${g.id}/expenses/${e.id}`} className="expenses-table__title">
                         {e.title || CATEGORY_LABELS[e.category]}
                       </Link>

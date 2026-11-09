@@ -1,73 +1,29 @@
-import type { ExpenseConflictBody, ExpenseDto, ExpenseInput, GroupDto } from '@se/shared';
-import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import type { ExpenseDto, ExpenseInput, GroupDto } from '@se/shared';
 import { useNavigate } from 'react-router';
 import { useToast } from '../../components/Toast.js';
-import { api, ApiError, errorText } from '../../lib/api.js';
-import { invalidateGroup } from '../../lib/expenses.js';
+import { useExpenseEditor } from '../../lib/queries/index.js';
 
-export type ConflictAction = 'save' | 'delete';
-export interface Conflict {
-  current: ExpenseDto | null;
-  action: ConflictAction;
-}
-
-/** Ошибка API, которая значит «расход изменили или удалили, пока была открыта форма». */
-function toConflict(err: unknown, action: ConflictAction, editing: boolean): Conflict | null {
-  if (!(err instanceof ApiError)) return null;
-  const isVersion = err.status === 409 && (err.code === 'version_conflict' || err.code === 'expense_deleted');
-  if (!isVersion && !(editing && err.status === 404)) return null;
-  return { current: (err.body as ExpenseConflictBody | undefined)?.current ?? null, action };
-}
-
-/**
- * Сохранение и удаление расхода. Версия по умолчанию — та, с которой человек начал править
- * (baseVersion), а не то, что потом пришло с сервера: иначе чужая правка затрётся без 409.
- */
+/** Сохранение и удаление расхода из формы: запросы и конфликты версий — в слое запросов, здесь тост и переход. */
 export function useExpenseMutations(g: GroupDto, expense: ExpenseDto | undefined) {
-  const qc = useQueryClient();
   const toast = useToast();
   const navigate = useNavigate();
-  const [baseVersion] = useState(expense?.version);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [conflict, setConflict] = useState<Conflict | null>(null);
+  const editor = useExpenseEditor(g.id, expense);
 
-  async function run(action: ConflictAction, request: () => Promise<unknown>, done: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      await request();
-      await invalidateGroup(qc, g.id);
-      qc.removeQueries({ queryKey: ['expense', expense?.id] });
-      toast(done);
-      await navigate(`/groups/${g.id}`);
-    } catch (err) {
-      const c = toConflict(err, action, !!expense);
-      if (c) {
-        setConflict(c);
-        void invalidateGroup(qc, g.id); // превью балансов должно считаться от свежих цифр
-      } else {
-        setError(errorText(err));
-      }
-    } finally {
-      setBusy(false);
-    }
+  async function finish(ok: boolean, done: string) {
+    if (!ok) return;
+    toast(done);
+    await navigate(`/groups/${g.id}`);
   }
 
   return {
-    busy,
-    error,
-    conflict,
-    save(input: ExpenseInput, version = baseVersion) {
-      const request = expense
-        ? () => api<ExpenseDto>('PUT', `/api/expenses/${expense.id}`, { ...input, version })
-        : () => api<ExpenseDto>('POST', `/api/groups/${g.id}/expenses`, input);
-      return run('save', request, expense ? 'Изменения сохранены' : 'Расход добавлен');
+    busy: editor.busy,
+    error: editor.error,
+    conflict: editor.conflict,
+    async save(input: ExpenseInput, version?: number) {
+      await finish(await editor.save(input, version), expense ? 'Изменения сохранены' : 'Расход добавлен');
     },
-    remove(version = baseVersion) {
-      if (!expense) return Promise.resolve();
-      return run('delete', () => api('DELETE', `/api/expenses/${expense.id}?version=${String(version)}`), 'Расход удалён');
+    async remove(version?: number) {
+      await finish(await editor.remove(version), 'Расход удалён');
     },
   };
 }

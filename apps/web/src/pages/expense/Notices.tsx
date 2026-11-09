@@ -1,8 +1,8 @@
 import { byGender, expenseEffect, type ExpenseDto, type GroupDto, type LedgerExpense } from '@se/shared';
 import { Link } from 'react-router';
 import { copy } from '../../lib/copy.js';
-import { CATEGORY_LABELS, money, moneyCur, shortDate } from '../../lib/expenses.js';
-import type { ConflictAction } from './mutations.js';
+import { CATEGORY_LABELS, money, moneyCur, shortDate } from '../../lib/format.js';
+import type { ConflictAction } from '../../lib/queries/index.js';
 
 const nameIn = (g: GroupDto, id: string) => g.members.find((m) => m.userId === id)?.name ?? 'Бывший участник';
 const signClass = (v: number) => (v > 0 ? 'plus' : v < 0 ? 'minus' : '');

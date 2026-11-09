@@ -14,9 +14,9 @@ import {
   type SplitMode,
 } from '@se/shared';
 import { useMemo, useState } from 'react';
-import { errorText } from '../../lib/api.js';
+import { errorText } from '../../lib/queries/index.js';
 import { copy, fill } from '../../lib/copy.js';
-import { CATEGORY_LABELS, today } from '../../lib/expenses.js';
+import { CATEGORY_LABELS, today } from '../../lib/format.js';
 
 export type Weights = Record<string, number>;
 export type Texts = Record<string, string>;
