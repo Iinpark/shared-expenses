@@ -4,10 +4,10 @@ import { Link } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
 import { ProfileMenu } from '../components/ProfileMenu.js';
-import { copy } from '../lib/copy.js';
+import { copy, fill } from '../lib/copy.js';
 import { money, moneyCur } from '../lib/format.js';
 import { dayMonth, members } from '../lib/ru.js';
-import { useCurrentUser, useGroups } from '../lib/queries/index.js';
+import { useCurrentUser, useGroups, usePendingToMe } from '../lib/queries/index.js';
 
 const symbol = (c: string) => {
   try {
@@ -18,7 +18,7 @@ const symbol = (c: string) => {
 };
 
 /** Баланс в группе для строки списка: «тебе вернут 3 166,66 ₽», «с тебя …», «в расчёте». */
-function BalanceSide({ g }: { g: GroupSummaryDto }) {
+function BalanceSide({ g, pending = 0 }: { g: GroupSummaryDto; pending?: number }) {
   if (g.myBalance === 0) return <span className="hint-sm">в расчёте</span>;
   return (
     <>
@@ -26,8 +26,15 @@ function BalanceSide({ g }: { g: GroupSummaryDto }) {
       <span className={`n ${g.myBalance > 0 ? 'plus' : 'minus'}`} style={{ fontWeight: 600, fontSize: 16 }}>
         {moneyCur(Math.abs(g.myBalance), g.currency)}
       </span>
+      <PendingPill amount={pending} currency={g.currency} />
     </>
   );
+}
+
+/** StatusPill «2 000,00 ждут тебя»: отмеченные переводы тебе, которые ты ещё не подтвердил. */
+function PendingPill({ amount, currency }: { amount: number; currency: string }) {
+  if (amount <= 0) return null;
+  return <span className="pill pill--pending n">{fill(copy.settlement.pendingPill, { amount: money(amount, currency) })}</span>;
 }
 
 /** Общий итог по всем группам — отдельно по каждой валюте, без сложения разных валют. */
@@ -59,6 +66,11 @@ export function GroupsPage() {
   const list = groups.data ?? [];
   const open = list.filter((g) => g.status === 'open');
   const closed = list.filter((g) => g.status === 'closed');
+  // Ждать подтверждения тебя может только там, где тебе должны вернуть.
+  const pendingToMe = usePendingToMe(
+    open.filter((g) => g.myBalance > 0).map((g) => g.id),
+    me.id,
+  );
 
   if (groups.isSuccess && list.length === 0) {
     return (
@@ -108,7 +120,7 @@ export function GroupsPage() {
                     </span>
                   </div>
                   <div className="group-link__side">
-                    <BalanceSide g={g} />
+                    <BalanceSide g={g} pending={pendingToMe.get(g.id)} />
                   </div>
                 </Link>
               ))}
@@ -206,6 +218,9 @@ export function GroupsPage() {
                             {money(g.myBalance, g.currency, true)}
                           </span>
                         )}
+                        <span style={{ display: 'block' }}>
+                          <PendingPill amount={pendingToMe.get(g.id) ?? 0} currency={g.currency} />
+                        </span>
                       </td>
                     </tr>
                   ))}

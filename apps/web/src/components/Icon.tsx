@@ -24,6 +24,18 @@ const paths = {
     </>
   ),
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  rejected: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9 9l6 6M15 9l-6 6" />
+    </>
+  ),
 } as const;
 
 export function Icon({ name, size = 20, strokeWidth = 2 }: { name: keyof typeof paths; size?: number; strokeWidth?: number }) {

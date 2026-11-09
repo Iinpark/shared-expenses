@@ -11,6 +11,7 @@ import { InvitePage } from './pages/InvitePage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { SettlementPage } from './pages/SettlementPage.js';
 
 /** Пускает только вошедших и представившихся; остальных отправляет на вход и возвращает обратно. */
 function RequireUser({ children }: { children: ReactNode }) {
@@ -42,6 +43,7 @@ export function App() {
           <Route path="/groups/:id/expenses/new" element={<RequireUser><ExpensePage /></RequireUser>} />
           <Route path="/groups/:id/expenses/:expenseId" element={<RequireUser><ExpensePage /></RequireUser>} />
           <Route path="/groups/:id/feed" element={<RequireUser><GroupPage tab="feed" /></RequireUser>} />
+          <Route path="/groups/:id/settlements/:settlementId" element={<RequireUser><SettlementPage /></RequireUser>} />
           <Route path="/groups/:id/settings" element={<RequireUser><SettingsPage /></RequireUser>} />
           <Route path="*" element={<NotFoundPage />} />
           </Routes>
