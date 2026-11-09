@@ -1,9 +1,9 @@
-import { expenseInputSchema, expenseUpdateSchema } from '@se/shared';
+import { canEditExpense, expenseInputSchema, expenseUpdateSchema } from '@se/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireProfile } from '../auth/session.js';
-import { db } from '../db/client.js';
-import { parse } from '../lib/errors.js';
+import { db, type Tx } from '../db/client.js';
+import { forbidden, parse } from '../lib/errors.js';
 import { assertOpen, getMemberGroup } from '../groups/service.js';
 import {
   createExpense,
@@ -14,6 +14,23 @@ import {
   listExpenses,
   updateExpense,
 } from './service.js';
+
+/**
+ * Блокирует группу расхода и уже под блокировкой перечитывает сам расход: права проверяются
+ * по его актуальному плательщику и автору, а не по тому, что было до чужой правки.
+ */
+async function lockExpenseGroup(tx: Tx, expenseId: string, userId: string) {
+  const { group } = await getMemberExpense(tx, expenseId, userId);
+  await getMemberGroup(tx, group.id, userId, { lock: true });
+  return getMemberExpense(tx, expenseId, userId);
+}
+
+/** Менять и удалять расход могут плательщик, автор и создатель группы (DECISIONS, раздел 15). */
+function assertCanEdit(expense: { payerId: string; createdBy: string }, userId: string, group: { ownerId: string }) {
+  if (!canEditExpense(expense, userId, group.ownerId)) {
+    throw forbidden('Изменить расход может тот, кто платил, кто его внёс, или создатель группы');
+  }
+}
 
 const groupParams = z.object({ id: z.uuid({ message: 'Группа не найдена' }) });
 const expenseParams = z.object({ id: z.uuid({ message: 'Расход не найден' }) });
@@ -66,10 +83,10 @@ export function expenseRoutes(app: FastifyInstance): Promise<void> {
     const { id } = parse(expenseParams, req.params);
     const input = parse(expenseUpdateSchema, req.body);
     return db.transaction(async (tx) => {
-      const { group } = await getMemberExpense(tx, id, user.id);
-      const locked = await getMemberGroup(tx, group.id, user.id, { lock: true });
-      assertOpen(locked);
-      return updateExpense(tx, locked, id, user.id, input);
+      const locked = await lockExpenseGroup(tx, id, user.id);
+      assertOpen(locked.group);
+      assertCanEdit(locked.expense, user.id, locked.group);
+      return updateExpense(tx, locked.group, id, user.id, input);
     });
   });
 
@@ -78,8 +95,9 @@ export function expenseRoutes(app: FastifyInstance): Promise<void> {
     const { id } = parse(expenseParams, req.params);
     const { version } = parse(versionQuery, req.query);
     await db.transaction(async (tx) => {
-      const { group } = await getMemberExpense(tx, id, user.id);
-      assertOpen(await getMemberGroup(tx, group.id, user.id, { lock: true }));
+      const locked = await lockExpenseGroup(tx, id, user.id);
+      assertOpen(locked.group);
+      assertCanEdit(locked.expense, user.id, locked.group);
       await deleteExpense(tx, id, user.id, version);
     });
     return reply.status(204).send();

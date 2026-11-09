@@ -103,7 +103,7 @@ describe('расходы и балансы', () => {
     const { groupId, cookies, ids } = await kazan();
     const [flat] = await addAll(groupId, cookies, ids);
     const flatId = must(flat).id;
-    expect((await req('DELETE', cookies.vika, `/api/expenses/${flatId}?version=1`)).statusCode).toBe(204);
+    expect((await req('DELETE', cookies.anya, `/api/expenses/${flatId}?version=1`)).statusCode).toBe(204);
     const list = expensesOf(await req('GET', cookies.anya, `/api/groups/${groupId}/expenses`));
     expect(list).toHaveLength(3);
     expect((await req('GET', cookies.anya, `/api/expenses/${flatId}`)).statusCode).toBe(404);
@@ -194,7 +194,7 @@ describe('конфликт правок', () => {
     const taxiId = must(taxi).id;
     await req('PUT', cookies.boris, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 120_000, version: 1 }));
 
-    const stale = await req('PUT', cookies.vika, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 90_000, version: 1 }));
+    const stale = await req('PUT', cookies.anya, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 90_000, version: 1 }));
     expect(stale.statusCode).toBe(409);
     expect(errorOf(stale).code).toBe('version_conflict');
     expect(conflictOf(stale).current).toMatchObject({ id: taxiId, version: 2, amount: 120_000 });
@@ -208,7 +208,7 @@ describe('конфликт правок', () => {
     const taxiId = must(taxi).id;
     const results = await Promise.all([
       req('PUT', cookies.boris, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 120_000, version: 1 })),
-      req('PUT', cookies.vika, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 90_000, version: 1 })),
+      req('PUT', cookies.anya, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 90_000, version: 1 })),
     ]);
     expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
     const final = expenseOf(await req('GET', cookies.anya, `/api/expenses/${taxiId}`));
@@ -221,11 +221,44 @@ describe('конфликт правок', () => {
     const [, taxi] = await addAll(groupId, cookies, ids);
     const taxiId = must(taxi).id;
     await req('PUT', cookies.boris, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 120_000, version: 1 }));
-    expect((await req('DELETE', cookies.vika, `/api/expenses/${taxiId}?version=1`)).statusCode).toBe(409);
+    expect((await req('DELETE', cookies.anya, `/api/expenses/${taxiId}?version=1`)).statusCode).toBe(409);
 
-    expect((await req('DELETE', cookies.vika, `/api/expenses/${taxiId}?version=2`)).statusCode).toBe(204);
+    expect((await req('DELETE', cookies.anya, `/api/expenses/${taxiId}?version=2`)).statusCode).toBe(204);
     // Борис правит из открытой формы уже удалённый расход.
     const res = await req('PUT', cookies.boris, `/api/expenses/${taxiId}`, input(ids, 1, { version: 2 }));
     expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('кто может менять расход', () => {
+  it('чужой участник не может изменить или удалить расход: 403, расход не тронут', async () => {
+    const { groupId, cookies, ids } = await kazan();
+    const [, taxi] = await addAll(groupId, cookies, ids);
+    const taxiId = must(taxi).id;
+
+    const put = await req('PUT', cookies.vika, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 1, version: 1 }));
+    expect(put.statusCode).toBe(403);
+    expect(errorOf(put).code).toBe('forbidden');
+    expect((await req('DELETE', cookies.vika, `/api/expenses/${taxiId}?version=1`)).statusCode).toBe(403);
+    expect(expenseOf(await req('GET', cookies.vika, `/api/expenses/${taxiId}`))).toMatchObject({ amount: 100_000, version: 1 });
+  });
+
+  it('плательщик и создатель группы могут менять расход', async () => {
+    const { groupId, cookies, ids } = await kazan();
+    const [, taxi] = await addAll(groupId, cookies, ids);
+    const taxiId = must(taxi).id;
+    expect((await req('PUT', cookies.boris, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 120_000, version: 1 }))).statusCode).toBe(200);
+    expect((await req('PUT', cookies.anya, `/api/expenses/${taxiId}`, input(ids, 1, { amount: 110_000, version: 2 }))).statusCode).toBe(200);
+  });
+
+  it('если расход внёс не плательщик, менять могут оба, а третий — нет', async () => {
+    const { groupId, cookies, ids } = await kazan();
+    // Вика вносит музей, который оплатил Гена.
+    const created = expenseOf(await req('POST', cookies.vika, `/api/groups/${groupId}/expenses`, input(ids, 3)));
+    expect(created).toMatchObject({ payerId: ids.gena, createdBy: ids.vika });
+
+    expect((await req('PUT', cookies.vika, `/api/expenses/${created.id}`, input(ids, 3, { amount: 210_000, version: 1 }))).statusCode).toBe(200);
+    expect((await req('PUT', cookies.gena, `/api/expenses/${created.id}`, input(ids, 3, { amount: 220_000, version: 2 }))).statusCode).toBe(200);
+    expect((await req('PUT', cookies.boris, `/api/expenses/${created.id}`, input(ids, 3, { amount: 1, version: 3 }))).statusCode).toBe(403);
   });
 });
