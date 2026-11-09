@@ -9,7 +9,7 @@ import { reminderEmail } from '../mail/templates.js';
 
 const DAY_MS = 86_400_000;
 /** Не чаще раза в неделю (ТЗ). */
-export const REMINDER_EVERY_MS = 7 * DAY_MS;
+const REMINDER_EVERY_MS = 7 * DAY_MS;
 
 type GroupRow = typeof groups.$inferSelect;
 interface MemberRow {
