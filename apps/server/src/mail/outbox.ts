@@ -67,11 +67,12 @@ export function startOutboxWorker(db: Db, send: SendMail, log: { error: (o: unkn
   const tick = async () => {
     try {
       // Пока очередь не пуста, отправляем порциями без паузы.
-      while (!stopped && (await processOutbox(db, send)) > 0) {}
+      let sent = 1;
+      while (!stopped && sent > 0) sent = await processOutbox(db, send);
     } catch (err) {
       log.error(err, 'outbox worker failed');
     }
-    if (!stopped) timer = setTimeout(tick, intervalMs);
+    if (!stopped) timer = setTimeout(() => void tick(), intervalMs);
   };
   void tick();
   return () => {

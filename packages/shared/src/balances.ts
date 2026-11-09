@@ -62,26 +62,67 @@ export const naiveTransferCount = (people: number) => (people * (people - 1)) / 
 /** До скольких людей с ненулевым балансом ищем точный минимум переводов (решение 5 в DECISIONS). */
 export const EXACT_TRANSFERS_LIMIT = 15;
 
+type Person = Balance;
+
+/** Самый большой должник и самый большой кредитор; при равенстве — кто раньше в списке. */
+function extremes(left: Person[]): { debtor?: Person; creditor?: Person } {
+  let debtor: Person | undefined;
+  let creditor: Person | undefined;
+  for (const p of left) {
+    if (p.amount < (debtor?.amount ?? 0)) debtor = p;
+    if (p.amount > (creditor?.amount ?? 0)) creditor = p;
+  }
+  return { debtor, creditor };
+}
+
 /**
  * Жадное сведение: самый большой должник платит самому большому кредитору, пока все не обнулятся.
  * При равенстве сумм раньше идёт тот, кто раньше в списке (порядок вступления), — результат детерминирован.
  */
-function greedy(people: Balance[]): Transfer[] {
+function greedy(people: Person[]): Transfer[] {
   const left = people.map((p) => ({ ...p }));
   const out: Transfer[] = [];
-  for (;;) {
-    let debtor: (typeof left)[number] | undefined;
-    let creditor: (typeof left)[number] | undefined;
-    for (const p of left) {
-      if (p.amount < 0 && (!debtor || p.amount < debtor.amount)) debtor = p;
-      if (p.amount > 0 && (!creditor || p.amount > creditor.amount)) creditor = p;
-    }
-    if (!debtor || !creditor) return out;
+  for (let { debtor, creditor } = extremes(left); debtor && creditor; { debtor, creditor } = extremes(left)) {
     const amount = Math.min(-debtor.amount, creditor.amount);
     out.push({ fromId: debtor.userId, toId: creditor.userId, amount });
     debtor.amount += amount;
     creditor.amount -= amount;
   }
+  return out;
+}
+
+const bit = (i: number) => 1 << i;
+const has = (mask: number, i: number) => (mask & bit(i)) !== 0;
+/** Элемент массива, который точно есть (индекс в пределах): для типизированных массивов перебора. */
+const at = (arr: Float64Array, i: number) => arr[i] ?? 0;
+
+/**
+ * Для каждого набора людей (маски) — сумма их балансов и наибольшее число компаний с нулевой суммой,
+ * на которые этот набор можно разбить по цепочке «убирать по одному человеку».
+ */
+function subsetTables(people: Person[]) {
+  const n = people.length;
+  const size = bit(n);
+  const sum = new Float64Array(size);
+  const best = new Float64Array(size);
+  for (let mask = 1; mask < size; mask++) {
+    const low = mask & -mask;
+    sum[mask] = at(sum, mask ^ low) + (people[31 - Math.clz32(low)]?.amount ?? 0);
+    let b = 0;
+    for (let i = 0; i < n; i++) if (has(mask, i)) b = Math.max(b, at(best, mask ^ bit(i)));
+    best[mask] = b + (at(sum, mask) === 0 ? 1 : 0);
+  }
+  return { sum, best };
+}
+
+/** Следующий шаг лучшего пути: кого убрать из набора, чтобы не потерять ни одной компании. */
+function nextOnBestPath(mask: number, n: number, sum: Float64Array, best: Float64Array): number {
+  const bonus = at(sum, mask) === 0 ? 1 : 0;
+  for (let i = 0; i < n; i++) {
+    const m = mask ^ bit(i);
+    if (has(mask, i) && at(best, m) + bonus === at(best, mask)) return m;
+  }
+  throw new Error('Перебор переводов: не нашли следующий шаг');
 }
 
 /**
@@ -90,33 +131,18 @@ function greedy(people: Balance[]): Transfer[] {
  * чем больше компаний, тем меньше переводов всего. Перебор всех подмножеств: 2^n вариантов,
  * для 15 человек это ~33 тысячи — мгновенно.
  */
-function zeroSumGroups(people: Balance[]): Balance[][] {
+function zeroSumGroups(people: Person[]): Person[][] {
   const n = people.length;
-  const full = (1 << n) - 1;
-  const sum = new Array<number>(1 << n).fill(0);
-  const best = new Array<number>(1 << n).fill(0);
-  for (let mask = 1; mask <= full; mask++) {
-    const low = mask & -mask;
-    sum[mask] = sum[mask ^ low]! + people[31 - Math.clz32(low)]!.amount;
-    let b = 0;
-    for (let i = 0; i < n; i++) if (mask & (1 << i)) b = Math.max(b, best[mask ^ (1 << i)]!);
-    best[mask] = b + (sum[mask] === 0 ? 1 : 0);
-  }
+  const { sum, best } = subsetTables(people);
   // Восстанавливаем разбиение: идём от всех людей к пустому множеству по лучшему пути.
   // Наборы с нулевой суммой на этом пути вложены друг в друга; их разности и есть компании.
-  const groups: Balance[][] = [];
-  let mask = full;
-  let zeroMask = full;
-  while (mask) {
-    let next = -1;
-    for (let i = 0; i < n && next < 0; i++) {
-      const m = mask ^ (1 << i);
-      if (mask & (1 << i) && best[m]! + (sum[mask] === 0 ? 1 : 0) === best[mask]) next = m;
-    }
-    mask = next;
-    if (sum[mask] === 0) {
+  const groups: Person[][] = [];
+  let zeroMask = bit(n) - 1;
+  for (let mask = zeroMask; mask !== 0; ) {
+    mask = nextOnBestPath(mask, n, sum, best);
+    if (at(sum, mask) === 0) {
       const diff = zeroMask ^ mask;
-      groups.push(people.filter((_, i) => diff & (1 << i)));
+      groups.push(people.filter((_, i) => has(diff, i)));
       zeroMask = mask;
     }
   }
@@ -134,5 +160,6 @@ export function minimalTransfers(balances: Balance[]): Transfer[] {
   const transfers = people.length > EXACT_TRANSFERS_LIMIT ? greedy(people) : zeroSumGroups(people).flatMap((group) => greedy(group));
   // Порядок для показа: сначала все переводы самого большого должника, внутри — крупные первыми.
   const debt = new Map(people.map((p) => [p.userId, p.amount]));
-  return transfers.sort((a, b) => debt.get(a.fromId)! - debt.get(b.fromId)! || b.amount - a.amount);
+  const debtOf = (id: string) => debt.get(id) ?? 0;
+  return transfers.sort((a, b) => debtOf(a.fromId) - debtOf(b.fromId) || b.amount - a.amount);
 }

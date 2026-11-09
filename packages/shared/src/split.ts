@@ -36,16 +36,22 @@ export class SplitError extends Error {
  * а копейки, оставшиеся от округления вниз, — по одной первым по порядку вступления.
  */
 function splitByWeights(total: number, parts: { userId: string; weight: number }[], joinOrder: ReadonlyMap<string, number>): ShareResult[] {
-  const ordered = [...parts].sort((a, b) => joinOrder.get(a.userId)! - joinOrder.get(b.userId)!);
+  const ordered = byJoinOrder(parts, joinOrder);
   const weightSum = ordered.reduce((s, p) => s + p.weight, 0);
-  const base = ordered.map((p) => Math.floor((total * p.weight) / weightSum));
-  let left = total - base.reduce((s, a) => s + a, 0);
+  const withBase = ordered.map((p) => ({ ...p, base: Math.floor((total * p.weight) / weightSum) }));
+  let left = total - withBase.reduce((s, p) => s + p.base, 0);
   // Остаток всегда меньше числа участников: каждый потерял при округлении меньше копейки.
-  return ordered.map((p, i) => {
+  return withBase.map((p) => {
     const extra = left > 0;
     if (extra) left--;
-    return { userId: p.userId, amount: base[i]! + (extra ? 1 : 0), weight: p.weight, extra };
+    return { userId: p.userId, amount: p.base + (extra ? 1 : 0), weight: p.weight, extra };
   });
+}
+
+/** Сортирует по порядку вступления. Все userId уже проверены assertParticipants. */
+function byJoinOrder<T extends { userId: string }>(parts: T[], joinOrder: ReadonlyMap<string, number>): T[] {
+  const order = (id: string) => joinOrder.get(id) ?? Number.MAX_SAFE_INTEGER;
+  return [...parts].sort((a, b) => order(a.userId) - order(b.userId));
 }
 
 function assertParticipants(userIds: string[], joinOrder: ReadonlyMap<string, number>) {
@@ -78,7 +84,5 @@ export function computeShares(total: number, split: SplitInput, joinOrder: Reado
   if (parts.some((p) => !Number.isSafeInteger(p.amount) || p.amount < 0)) throw new SplitError('bad_value', 'Доля не может быть отрицательной');
   const sum = parts.reduce((s, p) => s + p.amount, 0);
   if (sum !== total) throw new SplitError('sum_mismatch', 'Сумма долей должна совпадать с расходом до копейки');
-  return parts
-    .sort((a, b) => joinOrder.get(a.userId)! - joinOrder.get(b.userId)!)
-    .map((p) => ({ userId: p.userId, amount: p.amount, weight: null, extra: false }));
+  return byJoinOrder(parts, joinOrder).map((p) => ({ userId: p.userId, amount: p.amount, weight: null, extra: false }));
 }

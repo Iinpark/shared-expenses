@@ -23,7 +23,7 @@ const versionQuery = z.object({ version: z.coerce.number().int().positive() });
  * Расходы. Добавлять, править и удалять может любой участник открытой группы:
  * расходы вносит тот, кто платил, или тот, у кого под рукой телефон. Кто что поменял, видно в ленте.
  */
-export async function expenseRoutes(app: FastifyInstance) {
+export function expenseRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/groups/:id/expenses', async (req) => {
     const user = requireProfile(req);
     const { id } = parse(groupParams, req.params);
@@ -84,4 +84,5 @@ export async function expenseRoutes(app: FastifyInstance) {
     });
     return reply.status(204).send();
   });
+  return Promise.resolve();
 }

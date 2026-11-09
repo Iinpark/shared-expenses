@@ -7,7 +7,7 @@ const ALPHABET = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export function randomToken(length = 24): string {
   const bytes = randomBytes(length);
   let out = '';
-  for (const b of bytes) out += ALPHABET[b % ALPHABET.length];
+  for (const b of bytes) out += ALPHABET.charAt(b % ALPHABET.length);
   return out;
 }
 

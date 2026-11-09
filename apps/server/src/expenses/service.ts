@@ -1,3 +1,4 @@
+import { must } from '@se/shared';
 import {
   computeShares,
   minimalTransfers,
@@ -5,8 +6,7 @@ import {
   type BalancesDto,
   type ExpenseDto,
   type ExpenseShareDto,
-  type expenseInputSchema,
-} from '@se/shared';
+  type expenseInputSchema } from '@se/shared';
 import { and, asc, desc, eq, inArray, isNull, sql as dsql } from 'drizzle-orm';
 import type { z } from 'zod';
 import type { Tx } from '../db/client.js';
@@ -131,14 +131,14 @@ export async function createExpense(tx: Tx, group: GroupRow, userId: string, inp
       title: input.title,
       category: input.category,
       spentOn: input.spentOn,
-      comment: input.comment || null,
+      comment: input.comment === '' ? null : input.comment,
       splitMode: input.split.mode,
       createdBy: userId,
       updatedBy: userId,
     })
     .returning();
-  await writeShares(tx, row!.id, shares);
-  return expenseDto(tx, row!);
+  await writeShares(tx, must(row).id, shares);
+  return expenseDto(tx, must(row));
 }
 
 /** Конфликт версий: в ответе то, что сейчас в базе, чтобы клиент показал обе версии. */
@@ -170,7 +170,7 @@ export async function updateExpense(
       title: input.title,
       category: input.category,
       spentOn: input.spentOn,
-      comment: input.comment || null,
+      comment: input.comment === '' ? null : input.comment,
       splitMode: input.split.mode,
       version: dsql`${expenses.version} + 1`,
       updatedBy: userId,
@@ -226,7 +226,7 @@ export async function balancesByGroup(tx: Tx, groupIds: string[]): Promise<Map<s
      group by group_id, user_id
      order by group_id, min(join_order) nulls last, user_id
   `);
-  for (const r of rows) out.get(r.group_id)!.set(r.user_id, Number(r.balance));
+  for (const r of rows) out.get(r.group_id)?.set(r.user_id, Number(r.balance));
 
   for (const [groupId, m] of out) {
     const sum = [...m.values()].reduce((s, v) => s + v, 0);
@@ -237,11 +237,11 @@ export async function balancesByGroup(tx: Tx, groupIds: string[]): Promise<Map<s
 }
 
 export async function groupBalances(tx: Tx, groupId: string): Promise<BalancesDto> {
-  const map = (await balancesByGroup(tx, [groupId])).get(groupId)!;
+  const map = (await balancesByGroup(tx, [groupId])).get(groupId) ?? new Map<string, number>();
   const balances = [...map].map(([userId, amount]) => ({ userId, amount }));
   const [totals] = await tx
     .select({ total: dsql<string>`coalesce(sum(${expenses.amount}), 0)`, count: dsql<number>`count(*)`.mapWith(Number) })
     .from(expenses)
     .where(and(eq(expenses.groupId, groupId), isNull(expenses.deletedAt)));
-  return { balances, transfers: minimalTransfers(balances), totalSpent: Number(totals!.total), expenseCount: totals!.count };
+  return { balances, transfers: minimalTransfers(balances), totalSpent: Number(must(totals).total), expenseCount: must(totals).count };
 }

@@ -1,4 +1,5 @@
 import type { GroupDto, GroupSummaryDto, InvitePreviewDto, MemberDto } from '@se/shared';
+import { must } from '@se/shared';
 import { and, asc, eq, gt, inArray, isNull, lte, sql as dsql } from 'drizzle-orm';
 import { config } from '../config.js';
 import type { Tx } from '../db/client.js';
@@ -10,12 +11,12 @@ import { enqueueEmail } from '../mail/outbox.js';
 import { inviteEmail } from '../mail/templates.js';
 
 /** Ссылка живёт две недели: старая ссылка не должна годами ходить по чатам. */
-export const INVITE_TTL_MS = 14 * 86_400_000;
+const INVITE_TTL_MS = 14 * 86_400_000;
 
 /** Сколько приглашений по почте один человек может разослать за сутки: защита от рассылки спама через приложение. */
-export const EMAIL_INVITES_PER_DAY = 100;
+const EMAIL_INVITES_PER_DAY = 100;
 
-export const inviteUrl = (token: string) => `${config.webOrigin}/j/${token}`;
+const inviteUrl = (token: string) => `${config.webOrigin}/j/${token}`;
 
 type GroupRow = typeof groups.$inferSelect;
 
@@ -60,7 +61,7 @@ async function addMember(tx: Tx, groupId: string, userId: string) {
     .select({ n: dsql<number>`coalesce(max(${groupMembers.joinOrder}), 0) + 1`.mapWith(Number) })
     .from(groupMembers)
     .where(eq(groupMembers.groupId, groupId));
-  await tx.insert(groupMembers).values({ groupId, userId, joinOrder: next!.n }).onConflictDoNothing();
+  await tx.insert(groupMembers).values({ groupId, userId, joinOrder: must(next).n }).onConflictDoNothing();
   // Если человека звали по почте, приглашение выполнено.
   await tx
     .update(invites)
@@ -103,7 +104,7 @@ async function activeLinkToken(tx: Tx, groupId: string, userId: string): Promise
     .from(invites)
     .where(and(eq(invites.groupId, groupId), eq(invites.kind, 'link'), isNull(invites.revokedAt)))
     .limit(1);
-  return active!.token;
+  return must(active).token;
 }
 
 /** Приглашения по почте: письмо каждому адресу, кроме тех, кто уже в группе или уже приглашён. */
@@ -121,7 +122,7 @@ export async function inviteByEmail(
     .select({ n: dsql<number>`count(*)`.mapWith(Number) })
     .from(invites)
     .where(and(eq(invites.createdBy, inviter.id), eq(invites.kind, 'email'), gt(invites.createdAt, new Date(Date.now() - 86_400_000))));
-  if (sent!.n + unique.length > EMAIL_INVITES_PER_DAY) {
+  if (must(sent).n + unique.length > EMAIL_INVITES_PER_DAY) {
     throw new HttpError(429, 'too_many_invites', 'Слишком много приглашений за сутки. Позови остальных по ссылке.');
   }
 
@@ -176,10 +177,10 @@ export async function createGroup(
     .insert(groups)
     .values({ name: input.name, currency: input.currency, reminderDays: input.reminderDays, ownerId: owner.id })
     .returning();
-  await tx.insert(groupMembers).values({ groupId: group!.id, userId: owner.id, joinOrder: 1 });
-  await createLinkInvite(tx, group!.id, owner.id);
-  if (input.inviteEmails.length) await inviteByEmail(tx, group!, owner, input.inviteEmails);
-  return group!;
+  await tx.insert(groupMembers).values({ groupId: must(group).id, userId: owner.id, joinOrder: 1 });
+  await createLinkInvite(tx, must(group).id, owner.id);
+  if (input.inviteEmails.length) await inviteByEmail(tx, must(group), owner, input.inviteEmails);
+  return must(group);
 }
 
 export async function groupDto(tx: Tx, group: GroupRow, userId: string): Promise<GroupDto> {
@@ -199,11 +200,12 @@ export async function groupDto(tx: Tx, group: GroupRow, userId: string): Promise
     reminderDays: group.reminderDays,
     memberNames: members.map((m) => m.name),
     memberCount: members.length,
-    myBalance: (await balancesByGroup(tx, [group.id])).get(group.id)!.get(userId) ?? 0,
+    myBalance: (await balancesByGroup(tx, [group.id])).get(group.id)?.get(userId) ?? 0,
     members,
     pendingInvites: pending
-      .filter((p) => p.email && p.createdAt.getTime() + INVITE_TTL_MS > Date.now())
-      .map((p) => ({ id: p.id, email: p.email!, createdAt: p.createdAt.toISOString() })),
+      .flatMap((p) =>
+        p.email && p.createdAt.getTime() + INVITE_TTL_MS > Date.now() ? [{ id: p.id, email: p.email, createdAt: p.createdAt.toISOString() }] : [],
+      ),
     inviteToken: await activeLinkToken(tx, group.id, userId),
     currencyLocked: await hasExpenses(tx, group.id),
   };
@@ -238,7 +240,7 @@ export async function listGroups(tx: Tx, userId: string): Promise<GroupSummaryDt
       closedAt: group.closedAt?.toISOString() ?? null,
       memberNames,
       memberCount: memberNames.length,
-      myBalance: balances.get(group.id)!.get(userId) ?? 0,
+      myBalance: balances.get(group.id)?.get(userId) ?? 0,
     };
   });
 }
@@ -298,10 +300,10 @@ export async function acceptInvite(tx: Tx, token: string, userId: string) {
   const [group] = await tx.select().from(groups).where(eq(groups.id, found.groupId)).for('update');
   // Перечитываем приглашение уже под блокировкой группы: пока мы ждали, ссылку могли заменить.
   const [invite] = await tx.select().from(invites).where(eq(invites.id, found.id));
-  const reason = invalidReason(invite!, group!);
+  const reason = invalidReason(must(invite), must(group));
   if (reason) throw conflict('invite_expired', 'Приглашение больше не работает');
   // addMember сам отметит приглашение по почте принятым, если адрес вступившего совпадает.
   // Чужое приглашение (переслали письмо) работает как ссылка и не «съедает» приглашение адресата.
-  await addMember(tx, group!.id, userId);
-  return group!;
+  await addMember(tx, must(group).id, userId);
+  return must(group);
 }

@@ -25,9 +25,15 @@ pnpm dev        # сервер на :3000 и клиент на :5173
 ## Проверки
 
 ```bash
+pnpm check      # всё сразу: типы, линт, knip, тесты (как в CI)
+
 pnpm typecheck
+pnpm lint       # ESLint, строгие правила typescript-eslint, сложность функций ≤ 10
+pnpm knip       # неиспользуемые файлы, экспорты и зависимости
 pnpm test       # серверные тесты ходят в Postgres, поэтому перед ними нужен pnpm infra:up
 ```
+
+Те же проверки идут в CI (GitHub Actions) на каждый PR.
 
 ## Состояние проекта
 

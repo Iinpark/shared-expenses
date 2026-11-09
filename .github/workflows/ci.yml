@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      # Серверные тесты ходят в настоящий Postgres, как и в docker-compose.yml.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: shared_expenses
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d shared_expenses"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Включить pnpm из packageManager
+        run: corepack enable
+      - name: Кэш pnpm
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Типы
+        run: pnpm typecheck
+      - name: ESLint (строгие правила, сложность ≤ 10)
+        run: pnpm lint
+      - name: knip (мёртвый код и лишние зависимости)
+        run: pnpm knip
+      - name: Тесты
+        run: pnpm test
+      - name: Сборка клиента
+        run: pnpm --filter @se/web build

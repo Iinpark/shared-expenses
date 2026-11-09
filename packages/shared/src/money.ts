@@ -29,7 +29,7 @@ export function formatAmount(minor: number, currency: CurrencyCode, opts: { sign
  * Возвращает минимальные единицы или null, если это не сумма (лишние знаки после запятой тоже null).
  */
 export function parseAmount(text: string, currency: CurrencyCode): number | null {
-  const clean = text.replace(/[\s  ]/g, '').replace(',', '.');
+  const clean = text.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
   if (!clean) return null;
   const digits = minorDigits(currency);
   const re = digits ? new RegExp(`^(\\d+)(?:\\.(\\d{0,${digits}}))?$`) : /^(\d+)$/;

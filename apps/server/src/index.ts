@@ -15,7 +15,7 @@ const shutdown = async () => {
   await sql.end({ timeout: 5 });
   process.exit(0);
 };
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => void shutdown());
+process.on('SIGTERM', () => void shutdown());
 
 await app.listen({ port: config.port, host: '0.0.0.0' });
