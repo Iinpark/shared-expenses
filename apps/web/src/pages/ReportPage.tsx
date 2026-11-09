@@ -2,6 +2,7 @@ import { byGender, currencySymbol, type CurrencyCode, type ExpenseDto, type Grou
 import { Link, useParams } from 'react-router';
 import { ClosedBanner } from '../components/ClosedBanner.js';
 import { Icon } from '../components/Icon.js';
+import { ReceiptMark } from '../components/ReceiptMark.js';
 import { memberOf } from '../lib/events.js';
 import { CATEGORY_LABELS, money, moneyCur, splitLabel } from '../lib/format.js';
 import { ApiError, useCurrentUser, useExpenses, useGroup, useGroupReport } from '../lib/queries/index.js';
@@ -301,6 +302,12 @@ function ExpensesList({ c, expenses }: { c: Ctx; expenses: ExpenseDto[] }) {
               {e.title || CATEGORY_LABELS[e.category]}
               <span className="report-line__meta">
                 {nameOf(c, e.payerId)} · {splitLabel(e, c.g.memberCount)}
+                {e.receipt && (
+                  <>
+                    {' · '}
+                    <ReceiptMark expenseId={e.id} />
+                  </>
+                )}
               </span>
             </span>
             <span className="n">{money(e.amount, c.r.currency)}</span>

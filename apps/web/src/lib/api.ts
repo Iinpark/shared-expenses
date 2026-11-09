@@ -13,14 +13,16 @@ export class ApiError extends Error {
   }
 }
 
+/** Тело запроса: JSON или FormData (файл чека). У FormData заголовок с границей частей ставит сам браузер. */
+function encode(body: unknown): Pick<RequestInit, 'headers' | 'body'> {
+  if (body === undefined) return {};
+  if (body instanceof FormData) return { body };
+  return { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
+}
+
 async function send(method: string, path: string, body: unknown): Promise<Response> {
   try {
-    return await fetch(path, {
-      method,
-      credentials: 'same-origin',
-      headers: body === undefined ? {} : { 'content-type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    return await fetch(path, { method, credentials: 'same-origin', ...encode(body) });
   } catch {
     throw new ApiError(0, 'network', 'Нет связи с сервером. Проверь интернет и попробуй ещё раз.');
   }

@@ -4,6 +4,7 @@ import { Link, NavLink, useParams } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
 import { ClosedBanner } from '../components/ClosedBanner.js';
 import { Icon } from '../components/Icon.js';
+import { ReceiptMark } from '../components/ReceiptMark.js';
 import { useToast } from '../components/Toast.js';
 import { copy, fill } from '../lib/copy.js';
 import { CATEGORY_LABELS, countGenitive, inviteLink, money, moneyCur, shortDate, splitLabel } from '../lib/format.js';
@@ -387,7 +388,15 @@ function ExpenseRow({ e, g, meId, marks }: { e: ExpenseDto; g: GroupDto; meId: s
     <>
       <div className="row__main">
         <span className="row__title">{e.title || CATEGORY_LABELS[e.category]}</span>
-        <span className="row__meta">{expenseMeta(e, g, meId)}</span>
+        <span className="row__meta">
+          {expenseMeta(e, g, meId)}
+          {e.receipt && (
+            <>
+              {' · '}
+              <ReceiptMark expenseId={e.id} link={!editable(e, g, meId)} />
+            </>
+          )}
+        </span>
       </div>
       <div className="expense-row__side">
         <span className="n expense-row__amount">
@@ -453,6 +462,12 @@ function ExpensesPanel({ g, meId, expenses, balances, marks }: Ctx) {
                     <span className="hint-sm" style={{ display: 'block' }}>
                       {CATEGORY_LABELS[e.category].toLowerCase()} · {shortDate(e.spentOn)}
                       {e.version > 1 && ` · изменён ${shortDate(e.updatedAt)}`}
+                      {e.receipt && (
+                        <>
+                          {' · '}
+                          <ReceiptMark expenseId={e.id} />
+                        </>
+                      )}
                     </span>
                   </td>
                   <td>{e.payerId === meId ? 'Ты' : nameOf(g, e.payerId)}</td>

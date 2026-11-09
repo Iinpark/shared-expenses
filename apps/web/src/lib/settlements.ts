@@ -43,6 +43,21 @@ export function previewConfirm(balances: BalancesDto, s: Pick<SettlementDto, 'fr
 /** Целых дней с момента iso: «ждёт подтверждения 2 дня». */
 export const daysSince = (iso: string, now = Date.now()) => Math.max(0, Math.floor((now - new Date(iso).getTime()) / DAY_MS));
 
+// ---------- Получатель долго не подтверждает (DECISIONS, раздел 9) ----------
+
+/** Через столько дней ожидающее погашение напоминает о себе получателю: выделенная карточка, «давно» и тост. */
+const NUDGE_DAYS = 3;
+
+/** Сколько дней ждёт отметка, если пора напомнить получателю; иначе null. */
+export function overdueDays(s: Pick<SettlementDto, 'createdAt'>, now = Date.now()): number | null {
+  const days = daysSince(s.createdAt, now);
+  return days >= NUDGE_DAYS ? days : null;
+}
+
+/** Самая давняя из отметок, которые пора напомнить получателю, или undefined. */
+export const oldestOverdue = (list: SettlementDto[], now = Date.now()) =>
+  list.filter((s) => overdueDays(s, now) !== null).sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+
 // ---------- Что показать должнику ----------
 
 const byNewest = (at: (s: SettlementDto) => string) => (a: SettlementDto, b: SettlementDto) => at(b).localeCompare(at(a));

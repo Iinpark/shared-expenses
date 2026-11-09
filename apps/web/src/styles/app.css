@@ -2303,3 +2303,67 @@ strong.settle-summary__total:last-child {
     display: none !important;
   }
 }
+
+/** Чек и комментарий в форме расхода (M04): две пунктирные кнопки в ряд, раскрытое — на всю ширину. */
+.form-extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.form-extras > * {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.form-extras > .dashed-btn {
+  flex: 1 1 0;
+}
+.receipt-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.receipt-file > svg {
+  flex: none;
+  color: var(--ink-3);
+}
+.receipt-file--removed {
+  border-style: dashed;
+}
+.receipt-file__name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.receipt-file__title {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.receipt-file__actions {
+  flex: none;
+  display: flex;
+  gap: 14px;
+  font-size: 14px;
+}
+.receipt-error {
+  margin-top: -2px;
+}
+/** Отметка «чек» в строке расхода (D02). */
+.receipt-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: bottom;
+  color: inherit;
+}
+a.receipt-mark {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

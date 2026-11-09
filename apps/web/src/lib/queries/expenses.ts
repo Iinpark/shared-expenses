@@ -40,7 +40,7 @@ function toConflict(err: unknown, action: ConflictAction, editing: boolean): Con
 }
 
 /** После любого изменения: всё по группе, а сам расход выкидываем — следующая форма возьмёт свежий. */
-function useExpenseMutation<V>(groupId: string, expenseId: string | undefined, request: (v: V) => Promise<unknown>) {
+function useExpenseMutation<V, T>(groupId: string, expenseId: string | undefined, request: (v: V) => Promise<T>) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: request,
@@ -67,7 +67,7 @@ const useDeleteExpense = (groupId: string, expenseId: string | undefined) =>
 /**
  * Сохранение и удаление расхода с оптимистичной блокировкой. Версия по умолчанию — та, с которой
  * человек начал править (baseVersion), а не то, что потом пришло с сервера: иначе чужая правка затрётся без 409.
- * save/remove отвечают true, если всё прошло; тост и переход — на стороне страницы.
+ * save отвечает сохранённым расходом, remove — true, если всё прошло; тост и переход — на стороне страницы.
  */
 export function useExpenseEditor(groupId: string, expense: ExpenseDto | undefined) {
   const qc = useQueryClient();
@@ -78,11 +78,11 @@ export function useExpenseEditor(groupId: string, expense: ExpenseDto | undefine
   const update = useUpdateExpense(groupId, expense?.id);
   const remove = useDeleteExpense(groupId, expense?.id);
 
-  async function run(action: ConflictAction, request: () => Promise<unknown>): Promise<boolean> {
+  /** Ответ сервера, если всё прошло; null — ошибка (она уже в error или conflict). */
+  async function run<T>(action: ConflictAction, request: () => Promise<T>): Promise<{ value: T } | null> {
     setError(null);
     try {
-      await request();
-      return true;
+      return { value: await request() };
     } catch (err) {
       const c = toConflict(err, action, !!expense);
       if (c) {
@@ -91,7 +91,7 @@ export function useExpenseEditor(groupId: string, expense: ExpenseDto | undefine
       } else {
         setError(errorText(err));
       }
-      return false;
+      return null;
     }
   }
 
@@ -99,13 +99,14 @@ export function useExpenseEditor(groupId: string, expense: ExpenseDto | undefine
     busy: create.isPending || update.isPending || remove.isPending,
     error,
     conflict,
-    save(input: ExpenseInput, version = baseVersion) {
+    /** Сохранённый расход (у нового — его id нужен, чтобы приложить чек) или null. */
+    async save(input: ExpenseInput, version = baseVersion): Promise<ExpenseDto | null> {
       const request = expense ? () => update.mutateAsync({ id: expense.id, input, version }) : () => create.mutateAsync(input);
-      return run('save', request);
+      return (await run('save', request))?.value ?? null;
     },
-    remove(version = baseVersion) {
-      if (!expense) return Promise.resolve(false);
-      return run('delete', () => remove.mutateAsync({ id: expense.id, version }));
+    async remove(version = baseVersion): Promise<boolean> {
+      if (!expense) return false;
+      return !!(await run('delete', () => remove.mutateAsync({ id: expense.id, version })));
     },
   };
 }

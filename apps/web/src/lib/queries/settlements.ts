@@ -9,21 +9,21 @@ const fetchSettlements = (groupId: string) => api<SettlementDto[]>('GET', `/api/
 export const useSettlements = (groupId: string) => useQuery({ queryKey: qk.settlements(groupId), queryFn: () => fetchSettlements(groupId), retry: false });
 
 /**
- * Сколько ждёт подтверждения текущего пользователя в каждой из групп (M01: «2 000,00 ждут тебя»).
- * Запрос на группу, и только для тех, где тебе вообще должны вернуть.
+ * Что ждёт подтверждения текущего пользователя в каждой из групп (M01: «2 000,00 ждут тебя», напоминание
+ * через три дня). Запрос на группу, и только для тех, где тебе вообще должны вернуть. Группы без таких отметок в карту не попадают.
  */
-export function usePendingToMe(groupIds: string[], meId: string): Map<string, number> {
+export function usePendingToMe(groupIds: string[], meId: string): Map<string, SettlementDto[]> {
   return useQueries({
     queries: groupIds.map((id) => ({ queryKey: qk.settlements(id), queryFn: () => fetchSettlements(id), retry: false })),
     combine: (results) => {
-      const total = new Map<string, number>();
+      const byGroup = new Map<string, SettlementDto[]>();
       results.forEach((r, i) => {
         const id = groupIds[i];
         if (!id || !r.data) return;
-        const sum = r.data.filter((s) => s.status === 'pending' && s.toId === meId).reduce((acc, s) => acc + s.amount, 0);
-        if (sum > 0) total.set(id, sum);
+        const mine = r.data.filter((s) => s.status === 'pending' && s.toId === meId);
+        if (mine.length > 0) byGroup.set(id, mine);
       });
-      return total;
+      return byGroup;
     },
   });
 }

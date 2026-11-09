@@ -5,10 +5,12 @@ import { Icon } from '../components/Icon.js';
 import { copy, fill } from '../lib/copy.js';
 import { CATEGORY_LABELS, money, moneyCur, today } from '../lib/format.js';
 import { ApiError, useBalances, useCurrentUser, useExpense, useGroup } from '../lib/queries/index.js';
+import type { ReceiptChange } from '../lib/receipts.js';
 import { useExpenseDraft, type Draft } from './expense/draft.js';
 import { useExpenseMutations, type Mutations } from './expense/mutations.js';
 import { clearDraft } from './expense/draftStore.js';
 import { ConflictSheet, EditPreview, FormNotice, useFormNotice, type VersionView } from './expense/Notices.js';
+import { OpenReceipt, ReceiptField } from './expense/ReceiptField.js';
 import { SplitSection } from './expense/SplitSection.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
@@ -32,7 +34,7 @@ export function ExpensePage() {
 function Editor({ g, expense, meId }: { g: GroupDto; expense: ExpenseDto | undefined; meId: string }) {
   const [formShown, setFormShown] = useState(false);
   const blocked = readOnlyReason(g, expense, meId, formShown);
-  if (blocked) return <ReadOnly groupId={g.id} text={blocked} />;
+  if (blocked) return <ReadOnly groupId={g.id} text={blocked} expense={expense} />;
   if (!formShown) setFormShown(true);
   return <ExpenseForm group={g} expense={expense} />;
 }
@@ -44,10 +46,16 @@ function readOnlyReason(g: GroupDto, expense: ExpenseDto | undefined, meId: stri
   return null;
 }
 
-function ReadOnly({ groupId, text }: { groupId: string; text: string }) {
+/** Править нельзя, но приложенный чек посмотреть можно. */
+function ReadOnly({ groupId, text, expense }: { groupId: string; text: string; expense: ExpenseDto | undefined }) {
   return (
     <div className="solo">
       <p className="empty__title">{text}</p>
+      {expense?.receipt && (
+        <p className="hint" style={{ marginTop: 12 }}>
+          К расходу приложен чек. <OpenReceipt expenseId={expense.id} />
+        </p>
+      )}
       <Link to={`/groups/${groupId}`} className="btn btn--outline" style={{ marginTop: 16 }}>
         К группе
       </Link>
@@ -61,9 +69,10 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
   const d = useExpenseDraft(g, expense, me.id);
   const m = useExpenseMutations(g, expense);
   const notice = useFormNotice(g, me.id, expense?.id);
+  const [receipt, setReceipt] = useState<ReceiptChange>('keep');
   const canSave = isSavable(g, d, m.busy);
   const save = (version?: number) => {
-    if (d.total !== null) void m.save(d.input(d.total), version);
+    if (d.total !== null) void m.save(d.input(d.total), receipt, version);
   };
 
   return (
@@ -83,7 +92,10 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
         </div>
         <div className="form-section" style={{ gap: 14, paddingTop: 20 }}>
           <SplitSection d={d} g={g} meId={me.id} />
-          <CommentField d={d} initiallyOpen={!!expense?.comment} />
+          <div className="form-extras">
+            <ReceiptField g={g} expense={expense} change={receipt} onChange={setReceipt} />
+            <CommentField d={d} initiallyOpen={!!expense?.comment} />
+          </div>
         </div>
         {expense && d.shares && d.total !== null && balances.data && (
           <div className="form-section" style={{ paddingTop: 20 }}>

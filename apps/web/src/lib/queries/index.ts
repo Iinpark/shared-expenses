@@ -6,5 +6,6 @@ export * from './expenses.js';
 export * from './groups.js';
 export * from './invites.js';
 export * from './realtime.js';
+export * from './receipts.js';
 export * from './reports.js';
 export * from './settlements.js';
