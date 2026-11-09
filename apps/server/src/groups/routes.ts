@@ -1,3 +1,4 @@
+import { must } from '@se/shared';
 import { createGroupSchema, inviteEmailsSchema, updateGroupSchema } from '@se/shared';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
@@ -13,17 +14,17 @@ import {
   createGroup,
   getMemberGroup,
   groupDto,
-  hasExpenses,
   inviteByEmail,
   listGroups,
   previewInvite,
   rotateLink,
 } from './service.js';
+import { hasExpenses } from '../expenses/service.js';
 
 const idParams = z.object({ id: z.uuid({ message: 'Группа не найдена' }) });
 const tokenParams = z.object({ token: z.string().min(1).max(64) });
 
-export async function groupRoutes(app: FastifyInstance) {
+export function groupRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/groups', async (req) => {
     const user = requireProfile(req);
     return listGroups(db, user.id);
@@ -57,7 +58,7 @@ export async function groupRoutes(app: FastifyInstance) {
         throw conflict('currency_locked', 'В группе уже есть расходы, валюту не поменять');
       }
       const [updated] = await tx.update(groups).set(patch).where(eq(groups.id, id)).returning();
-      return groupDto(tx, updated!, user.id);
+      return groupDto(tx, must(updated), user.id);
     });
   });
 
@@ -98,4 +99,5 @@ export async function groupRoutes(app: FastifyInstance) {
     const group = await db.transaction((tx) => acceptInvite(tx, token, user.id));
     return { groupId: group.id };
   });
+  return Promise.resolve();
 }

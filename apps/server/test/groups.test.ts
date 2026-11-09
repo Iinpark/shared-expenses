@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { db, sql } from '../src/db/client.js';
 import { groups, invites } from '../src/db/schema.js';
-import { emailsTo, lastEmailTo, login, makeApp, resetDb, tokenFromUrl } from './helpers.js';
+import { must, type InvitePreviewDto } from '@se/shared';
+import { emailsTo, errorOf, groupOf, groupsOf, lastEmailTo, login, makeApp, resetDb, tokenFromUrl } from './helpers.js';
 
 const app = await makeApp();
 afterAll(async () => {
@@ -18,7 +19,7 @@ const post = (cookie: Cookie, url: string, payload?: object) => app.inject({ met
 async function createKazan(anya: Cookie, inviteEmails: string[] = []) {
   const res = await post(anya, '/api/groups', { name: 'Поездка в Казань', currency: 'RUB', reminderDays: 7, inviteEmails });
   expect(res.statusCode).toBe(201);
-  return res.json();
+  return groupOf(res);
 }
 
 describe('группы', () => {
@@ -29,20 +30,20 @@ describe('группы', () => {
     expect(group.members).toEqual([expect.objectContaining({ name: 'Аня', joinOrder: 1, isOwner: true })]);
     expect(group.inviteToken).toMatch(/^[A-Za-z0-9]{10}$/);
 
-    const list = (await get(anya, '/api/groups')).json();
+    const list = groupsOf(await get(anya, '/api/groups'));
     expect(list).toHaveLength(1);
-    expect(list[0].memberNames).toEqual(['Аня']);
+    expect(must(list[0]).memberNames).toEqual(['Аня']);
   });
 
   it('приглашение по почте: одно письмо на адрес, повторное приглашение не дублирует', async () => {
     const anya = await login(app, 'anya@example.com', 'Аня', 'f');
     const group = await createKazan(anya, ['boris@example.com', 'vika@example.com', 'boris@example.com']);
-    expect(group.pendingInvites.map((i: { email: string }) => i.email)).toEqual(['boris@example.com', 'vika@example.com']);
+    expect(group.pendingInvites.map((i) => i.email)).toEqual(['boris@example.com', 'vika@example.com']);
 
-    const mail = await lastEmailTo('boris@example.com');
-    expect(mail!.subject).toBe('Аня зовёт тебя в группу «Поездка в Казань»');
-    expect(mail!.html).toContain('указала твой адрес');
-    expect(tokenFromUrl(mail!.text)).toBeTruthy();
+    const mail = must(await lastEmailTo('boris@example.com'));
+    expect(mail.subject).toBe('Аня зовёт тебя в группу «Поездка в Казань»');
+    expect(mail.html).toContain('указала твой адрес');
+    expect(tokenFromUrl(mail.text)).toBeTruthy();
 
     await post(anya, `/api/groups/${group.id}/invites`, { emails: ['boris@example.com'] });
     expect(await emailsTo('boris@example.com', 'зовёт тебя')).toHaveLength(1);
@@ -76,19 +77,19 @@ describe('приглашения', () => {
     const anya = await login(app, 'anya@example.com', 'Аня', 'f');
     const group = await createKazan(anya);
 
-    const preview = (await get(null, `/api/invites/${group.inviteToken}`)).json();
+    const preview = (await get(null, `/api/invites/${group.inviteToken}`)).json<InvitePreviewDto>();
     expect(preview).toMatchObject({ status: 'valid', groupName: 'Поездка в Казань', inviterName: 'Аня', memberNames: ['Аня'], alreadyMember: false });
 
     const boris = await login(app, 'boris@example.com', 'Борис');
     const accepted = await post(boris, `/api/invites/${group.inviteToken}/accept`);
     expect(accepted.json()).toEqual({ groupId: group.id });
 
-    const full = (await get(anya, `/api/groups/${group.id}`)).json();
-    expect(full.members.map((m: { name: string; joinOrder: number }) => [m.name, m.joinOrder])).toEqual([
+    const full = groupOf(await get(anya, `/api/groups/${group.id}`));
+    expect(full.members.map((m) => [m.name, m.joinOrder])).toEqual([
       ['Аня', 1],
       ['Борис', 2],
     ]);
-    expect((await get(boris, `/api/invites/${group.inviteToken}`)).json().alreadyMember).toBe(true);
+    expect((await get(boris, `/api/invites/${group.inviteToken}`)).json()).toMatchObject({ alreadyMember: true });
   });
 
   it('повторное вступление ничего не ломает', async () => {
@@ -97,22 +98,22 @@ describe('приглашения', () => {
     const boris = await login(app, 'boris@example.com', 'Борис');
     await post(boris, `/api/invites/${group.inviteToken}/accept`);
     await post(boris, `/api/invites/${group.inviteToken}/accept`);
-    expect((await get(anya, `/api/groups/${group.id}`)).json().memberCount).toBe(2);
+    expect(groupOf(await get(anya, `/api/groups/${group.id}`)).memberCount).toBe(2);
   });
 
   it('вступление по письму закрывает приглашение на этот адрес', async () => {
     const anya = await login(app, 'anya@example.com', 'Аня');
     const group = await createKazan(anya, ['vika@example.com']);
-    const token = tokenFromUrl((await lastEmailTo('vika@example.com'))!.text)!;
+    const token = must(tokenFromUrl(must(await lastEmailTo('vika@example.com')).text));
     const vika = await login(app, 'vika@example.com', 'Вика');
     expect((await post(vika, `/api/invites/${token}/accept`)).statusCode).toBe(200);
-    expect((await get(anya, `/api/groups/${group.id}`)).json().pendingInvites).toEqual([]);
+    expect(groupOf(await get(anya, `/api/groups/${group.id}`)).pendingInvites).toEqual([]);
   });
 
   it('после обновления ссылки старая не работает', async () => {
     const anya = await login(app, 'anya@example.com', 'Аня', 'f');
     const group = await createKazan(anya);
-    const rotated = (await post(anya, `/api/groups/${group.id}/invite-link/rotate`)).json();
+    const rotated = groupOf(await post(anya, `/api/groups/${group.id}/invite-link/rotate`));
     expect(rotated.inviteToken).not.toBe(group.inviteToken);
 
     expect((await get(null, `/api/invites/${group.inviteToken}`)).json()).toMatchObject({ status: 'expired', reason: 'rotated', inviterName: 'Аня', inviterGender: 'f' });
@@ -127,7 +128,7 @@ describe('приглашения', () => {
     const cookies = await Promise.all(['b', 'c', 'd', 'e', 'f'].map((n) => login(app, `${n}@example.com`, n.toUpperCase())));
     const results = await Promise.all(cookies.map((c) => post(c, `/api/invites/${group.inviteToken}/accept`)));
     expect(results.map((r) => r.statusCode)).toEqual([200, 200, 200, 200, 200]);
-    const orders = (await get(anya, `/api/groups/${group.id}`)).json().members.map((m: { joinOrder: number }) => m.joinOrder);
+    const orders = groupOf(await get(anya, `/api/groups/${group.id}`)).members.map((m) => m.joinOrder);
     expect(orders).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
@@ -147,27 +148,27 @@ describe('приглашения', () => {
     const anya = await login(app, 'anya@example.com', 'Аня');
     const group = await createKazan(anya, ['vika@example.com']);
     await db.update(invites).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(invites.email, 'vika@example.com'));
-    const again = (await post(anya, `/api/groups/${group.id}/invites`, { emails: ['vika@example.com'] })).json();
-    expect(again.pendingInvites.map((i: { email: string }) => i.email)).toEqual(['vika@example.com']);
+    const again = groupOf(await post(anya, `/api/groups/${group.id}/invites`, { emails: ['vika@example.com'] }));
+    expect(again.pendingInvites.map((i) => i.email)).toEqual(['vika@example.com']);
     expect(await emailsTo('vika@example.com', 'зовёт тебя')).toHaveLength(2);
   });
 
   it('пересланное приглашение не закрывает приглашение адресата, а после его вступления не работает', async () => {
     const anya = await login(app, 'anya@example.com', 'Аня');
     const group = await createKazan(anya, ['vika@example.com']);
-    const token = tokenFromUrl((await lastEmailTo('vika@example.com'))!.text)!;
+    const token = must(tokenFromUrl(must(await lastEmailTo('vika@example.com')).text));
 
     const gena = await login(app, 'gena@example.com', 'Гена');
     expect((await post(gena, `/api/invites/${token}/accept`)).statusCode).toBe(200);
-    expect((await get(anya, `/api/groups/${group.id}`)).json().pendingInvites).toHaveLength(1);
+    expect(groupOf(await get(anya, `/api/groups/${group.id}`)).pendingInvites).toHaveLength(1);
 
     const vika = await login(app, 'vika@example.com', 'Вика');
     expect((await post(vika, `/api/invites/${token}/accept`)).statusCode).toBe(200);
-    expect((await get(anya, `/api/groups/${group.id}`)).json().pendingInvites).toHaveLength(0);
+    expect(groupOf(await get(anya, `/api/groups/${group.id}`)).pendingInvites).toHaveLength(0);
 
     const boris = await login(app, 'boris@example.com', 'Борис');
     expect((await post(boris, `/api/invites/${token}/accept`)).statusCode).toBe(409);
-    expect((await get(null, `/api/invites/${token}`)).json().status).toBe('expired');
+    expect((await get(null, `/api/invites/${token}`)).json()).toMatchObject({ status: 'expired' });
   });
 
   it('за сутки можно разослать не больше 100 приглашений', async () => {
@@ -185,6 +186,6 @@ describe('приглашения', () => {
     const res = await app.inject({ method: 'PATCH', url: `/api/groups/${group.id}`, headers: { cookie: anya }, payload: {} });
     expect(res.statusCode).toBe(400);
     const zero = await app.inject({ method: 'PATCH', url: `/api/groups/${group.id}`, headers: { cookie: anya }, payload: { reminderDays: 0 } });
-    expect(zero.json().error.message).toBe('От 1 до 90 дней');
+    expect(errorOf(zero).message).toBe('От 1 до 90 дней');
   });
 });

@@ -1,4 +1,4 @@
-import { byGender, type InvitePreviewDto } from '@se/shared';
+import { byGender, type InvitePreviewDto, type Me } from '@se/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -15,10 +15,6 @@ import { NotFoundPage } from './NotFoundPage.js';
 export function InvitePage() {
   const { token = '' } = useParams();
   const me = useMe().data;
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const preview = useQuery({
     queryKey: ['invite', token, me?.id ?? null],
@@ -30,19 +26,6 @@ export function InvitePage() {
   const p = preview.data;
   if (!p) return <p className="hint" style={{ padding: 20 }}>Загружаем…</p>;
   if (p.status === 'expired') return <InviteExpired preview={p} />;
-
-  const join = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const { groupId } = await api<{ groupId: string }>('POST', `/api/invites/${token}/accept`);
-      await qc.invalidateQueries({ queryKey: ['groups'] });
-      navigate(`/groups/${groupId}`, { replace: true });
-    } catch (err) {
-      setError(errorText(err));
-      setBusy(false);
-    }
-  };
 
   return (
     <div className="solo">
@@ -84,24 +67,51 @@ export function InvitePage() {
       </dl>
 
       <div style={{ marginTop: 28 }}>
-        {p.alreadyMember ? (
-          <Link to={`/groups/${p.groupId}`} className="btn btn--primary btn--main">
-            Ты уже в группе. Открыть
-          </Link>
-        ) : me?.name ? (
-          <div className="field" style={{ gap: 10 }}>
-            <p className="hint">Ты войдёшь как {me.name} ({me.email}).</p>
-            {error && <p className="field-error">{error}</p>}
-            <button className="btn btn--primary btn--main" disabled={busy} onClick={join}>
-              Присоединиться
-            </button>
-          </div>
-        ) : (
-          <AuthFlow submitLabel="Присоединиться" onDone={join} />
-        )}
+        <InviteAction token={token} preview={p} me={me ?? null} />
       </div>
 
       <p className="solo__foot">Не знаешь, кто зовёт? Просто закрой страницу, в группу тебя не добавят.</p>
+    </div>
+  );
+}
+
+/** Кнопка под приглашением: открыть группу, вступить или сначала войти. */
+function InviteAction({ token, preview: p, me }: { token: string; preview: Extract<InvitePreviewDto, { status: 'valid' }>; me: Me | null }) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const join = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { groupId } = await api<{ groupId: string }>('POST', `/api/invites/${token}/accept`);
+      await qc.invalidateQueries({ queryKey: ['groups'] });
+      await navigate(`/groups/${groupId}`, { replace: true });
+    } catch (err) {
+      setError(errorText(err));
+      setBusy(false);
+    }
+  };
+
+  if (p.alreadyMember) {
+    return (
+      <Link to={`/groups/${p.groupId}`} className="btn btn--primary btn--main">
+        Ты уже в группе. Открыть
+      </Link>
+    );
+  }
+  if (!me?.name) return <AuthFlow submitLabel="Присоединиться" onDone={() => void join()} />;
+  return (
+    <div className="field" style={{ gap: 10 }}>
+      <p className="hint">
+        Ты войдёшь как {me.name} ({me.email}).
+      </p>
+      {error && <p className="field-error">{error}</p>}
+      <button className="btn btn--primary btn--main" disabled={busy} onClick={() => void join()}>
+        Присоединиться
+      </button>
     </div>
   );
 }

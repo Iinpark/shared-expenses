@@ -1,5 +1,8 @@
 import { z } from 'zod';
+import type { Balance, Transfer } from './balances.js';
 import { CURRENCIES } from './currency.js';
+import { MAX_AMOUNT } from './money.js';
+import type { SplitMode } from './split.js';
 
 /** Контракты API: схемы запросов и типы ответов, общие для сервера и клиента. */
 
@@ -82,6 +85,8 @@ export interface GroupSummaryDto {
   closedAt: string | null;
   memberNames: string[];
   memberCount: number;
+  /** Баланс текущего пользователя в этой группе. */
+  myBalance: number;
 }
 
 export interface GroupDto extends GroupSummaryDto {
@@ -116,4 +121,82 @@ export type InvitePreviewDto =
 
 export interface ApiErrorBody {
   error: { code: string; message: string };
+}
+
+// ---------- Расходы ----------
+
+export const EXPENSE_CATEGORIES = ['food', 'transport', 'housing', 'fun', 'other'] as const;
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+const userId = z.uuid({ message: 'Неизвестный участник' });
+const minor = z.number().int().nonnegative();
+
+export const splitSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('equal'), userIds: z.array(userId).min(1, 'Выбери, на кого делить').max(100) }),
+  z.object({
+    mode: z.literal('shares'),
+    shares: z.array(z.object({ userId, weight: z.number().int().min(0).max(1000) })).min(1).max(100),
+  }),
+  z.object({
+    mode: z.literal('exact'),
+    shares: z.array(z.object({ userId, amount: minor.max(MAX_AMOUNT) })).min(1).max(100),
+  }),
+]);
+
+export const expenseInputSchema = z.object({
+  amount: z
+    .number()
+    .int()
+    .positive('Сумма должна быть больше нуля')
+    .max(MAX_AMOUNT, 'Слишком большая сумма'),
+  title: z.string().trim().max(80, 'Слишком длинное название').default(''),
+  category: z.enum(EXPENSE_CATEGORIES),
+  payerId: userId,
+  spentOn: z.iso.date({ message: 'Неверная дата' }),
+  comment: z.string().trim().max(500, 'Слишком длинный комментарий').nullable().default(null),
+  split: splitSchema,
+});
+export type ExpenseInput = z.input<typeof expenseInputSchema>;
+
+/** Правка расхода: те же поля плюс версия, с которой человек начал править. */
+export const expenseUpdateSchema = expenseInputSchema.extend({ version: z.number().int().positive() });
+export type ExpenseUpdate = z.input<typeof expenseUpdateSchema>;
+
+export interface ExpenseShareDto {
+  userId: string;
+  amount: number;
+  weight: number | null;
+}
+
+export interface ExpenseDto {
+  id: string;
+  groupId: string;
+  amount: number;
+  title: string;
+  category: ExpenseCategory;
+  payerId: string;
+  spentOn: string;
+  comment: string | null;
+  splitMode: SplitMode;
+  shares: ExpenseShareDto[];
+  /** Растёт на 1 при каждой правке. Правка со старой версией получает 409. */
+  version: number;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface BalancesDto {
+  /** В порядке вступления. Плюс — участнику вернут, минус — с него. */
+  balances: Balance[];
+  transfers: Transfer[];
+  /** Сколько всего потрачено в группе. */
+  totalSpent: number;
+  expenseCount: number;
+}
+
+/** Тело ответа 409 при правке устаревшей версии: что сейчас лежит в базе (для экрана конфликта). */
+export interface ExpenseConflictBody extends ApiErrorBody {
+  current: ExpenseDto | null;
 }

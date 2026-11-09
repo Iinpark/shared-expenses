@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   char,
+  date,
   check,
   index,
   integer,
@@ -19,6 +21,11 @@ const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull(
 export const genderEnum = pgEnum('gender', ['f', 'm']);
 export const groupStatusEnum = pgEnum('group_status', ['open', 'closed']);
 export const inviteKindEnum = pgEnum('invite_kind', ['link', 'email']);
+export const expenseCategoryEnum = pgEnum('expense_category', ['food', 'transport', 'housing', 'fun', 'other']);
+export const splitModeEnum = pgEnum('split_mode', ['equal', 'shares', 'exact']);
+
+/** Деньги: целые минимальные единицы валюты. bigint в базе, number в коде (до 2^53 точно). */
+const money = (name: string) => bigint(name, { mode: 'number' });
 
 // ---------- Пользователи и вход ----------
 
@@ -129,6 +136,69 @@ export const invites = pgTable(
     uniqueIndex('invites_active_email_unique')
       .on(t.groupId, t.email)
       .where(sql`${t.kind} = 'email' and ${t.revokedAt} is null and ${t.acceptedAt} is null`),
+  ],
+);
+
+// ---------- Расходы ----------
+
+/**
+ * Расход. Удаление мягкое (deleted_at): история нужна ленте группы.
+ * version растёт при каждой правке; правка со старой версией отклоняется (409).
+ */
+export const expenses = pgTable(
+  'expenses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    groupId: uuid('group_id')
+      .notNull()
+      .references(() => groups.id, { onDelete: 'cascade' }),
+    payerId: uuid('payer_id')
+      .notNull()
+      .references(() => users.id),
+    amount: money('amount').notNull(),
+    title: text('title').notNull().default(''),
+    category: expenseCategoryEnum('category').notNull(),
+    spentOn: date('spent_on', { mode: 'string' }).notNull(),
+    comment: text('comment'),
+    splitMode: splitModeEnum('split_mode').notNull(),
+    version: integer('version').notNull().default(1),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    updatedBy: uuid('updated_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    check('expenses_amount_positive', sql`${t.amount} > 0`),
+    index('expenses_group_idx').on(t.groupId, t.spentOn).where(sql`${t.deletedAt} is null`),
+  ],
+);
+
+/**
+ * Доли расхода, уже посчитанные (с лишними копейками). weight — число долей в режимах
+ * «поровну» (1) и «долями»; в режиме «суммами» null. Сумма долей = сумме расхода
+ * (проверяется в коде перед записью, тем же кодом, что и превью в форме).
+ */
+export const expenseShares = pgTable(
+  'expense_shares',
+  {
+    expenseId: uuid('expense_id')
+      .notNull()
+      .references(() => expenses.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    amount: money('amount').notNull(),
+    weight: integer('weight'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.expenseId, t.userId] }),
+    index('expense_shares_user_idx').on(t.userId),
+    check('expense_shares_amount_nonneg', sql`${t.amount} >= 0`),
   ],
 );
 

@@ -1,3 +1,4 @@
+import { must } from '@se/shared';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { db, sql } from '../src/db/client.js';
@@ -16,8 +17,12 @@ describe('очередь писем', () => {
     await enqueueEmail(db, 'event:1', msg('a@example.com'));
     await enqueueEmail(db, 'event:1', msg('a@example.com'));
     const sent: EmailMessage[] = [];
-    await processOutbox(db, async (m) => void sent.push(m));
-    await processOutbox(db, async (m) => void sent.push(m));
+    const send = (m: EmailMessage) => {
+      sent.push(m);
+      return Promise.resolve();
+    };
+    await processOutbox(db, send);
+    await processOutbox(db, send);
     expect(sent).toHaveLength(1);
   });
 
@@ -35,12 +40,10 @@ describe('очередь писем', () => {
 
   it('ошибка отправки откладывает письмо и сохраняет причину', async () => {
     await enqueueEmail(db, 'event:fail', msg('a@example.com'));
-    await processOutbox(db, async () => {
-      throw new Error('SMTP недоступен');
-    });
+    await processOutbox(db, () => Promise.reject(new Error('SMTP недоступен')));
     const [row] = await db.select().from(emailOutbox).where(eq(emailOutbox.dedupeKey, 'event:fail'));
     expect(row).toMatchObject({ sentAt: null, attempts: 1 });
-    expect(row!.lastError).toContain('SMTP недоступен');
-    expect(row!.nextAttemptAt.getTime()).toBeGreaterThan(Date.now());
+    expect(must(row).lastError).toContain('SMTP недоступен');
+    expect(must(row).nextAttemptAt.getTime()).toBeGreaterThan(Date.now());
   });
 });

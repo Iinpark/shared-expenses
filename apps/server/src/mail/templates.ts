@@ -23,13 +23,13 @@ export function loginCodeEmail(to: string, code: string): EmailMessage {
 }
 
 /** Перечисление по-русски: «Аня», «Аня и Борис», «Аня, Борис и Вика». */
-export function joinNames(names: string[]): string {
+function joinNames(names: string[]): string {
   if (names.length <= 1) return names[0] ?? '';
   return `${names.slice(0, -1).join(', ')} и ${names.at(-1)}`;
 }
 
 function currencyLabel(code: string) {
-  return isCurrencyCode(code) ? currencyName(code).split(' ').at(-1)! : code;
+  return isCurrencyCode(code) ? (currencyName(code).split(' ').at(-1) ?? code) : code;
 }
 
 /** Письмо E01: приглашение в группу. */

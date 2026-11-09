@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { ToastProvider } from './components/Toast.js';
 import { useMe } from './lib/session.js';
 import { CreateGroupPage } from './pages/CreateGroupPage.js';
+import { ExpensePage } from './pages/ExpensePage.js';
 import { GroupPage } from './pages/GroupPage.js';
 import { GroupsPage } from './pages/GroupsPage.js';
 import { InvitePage } from './pages/InvitePage.js';
@@ -31,6 +32,8 @@ export function App() {
           <Route path="/groups/new" element={<RequireUser><CreateGroupPage /></RequireUser>} />
           <Route path="/groups/:id" element={<RequireUser><GroupPage tab="balance" /></RequireUser>} />
           <Route path="/groups/:id/expenses" element={<RequireUser><GroupPage tab="expenses" /></RequireUser>} />
+          <Route path="/groups/:id/expenses/new" element={<RequireUser><ExpensePage /></RequireUser>} />
+          <Route path="/groups/:id/expenses/:expenseId" element={<RequireUser><ExpensePage /></RequireUser>} />
           <Route path="/groups/:id/feed" element={<RequireUser><GroupPage tab="feed" /></RequireUser>} />
           <Route path="/groups/:id/settings" element={<RequireUser><SettingsPage /></RequireUser>} />
           <Route path="*" element={<NotFoundPage />} />

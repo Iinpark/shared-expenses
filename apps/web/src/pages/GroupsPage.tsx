@@ -7,8 +7,9 @@ import { Icon } from '../components/Icon.js';
 import { ProfileMenu } from '../components/ProfileMenu.js';
 import { api } from '../lib/api.js';
 import { copy } from '../lib/copy.js';
+import { money, moneyCur } from '../lib/expenses.js';
 import { dayMonth, members } from '../lib/ru.js';
-import { useMe } from '../lib/session.js';
+import { useCurrentUser } from '../lib/session.js';
 
 const symbol = (c: string) => {
   try {
@@ -18,12 +19,44 @@ const symbol = (c: string) => {
   }
 };
 
-/**
- * M01 / D01: список групп. Балансы и общий итог по валютам появятся вместе с расходами;
- * пока справа у группы только её состояние.
- */
+/** Баланс в группе для строки списка: «тебе вернут 3 166,66 ₽», «с тебя …», «в расчёте». */
+function BalanceSide({ g }: { g: GroupSummaryDto }) {
+  if (g.myBalance === 0) return <span className="hint-sm">в расчёте</span>;
+  return (
+    <>
+      <span className="hint-sm">{g.myBalance > 0 ? 'тебе вернут' : 'с тебя'}</span>
+      <span className={`n ${g.myBalance > 0 ? 'plus' : 'minus'}`} style={{ fontWeight: 600, fontSize: 16 }}>
+        {moneyCur(Math.abs(g.myBalance), g.currency)}
+      </span>
+    </>
+  );
+}
+
+/** Общий итог по всем группам — отдельно по каждой валюте, без сложения разных валют. */
+function Totals({ list }: { list: GroupSummaryDto[] }) {
+  const byCurrency = new Map<string, number>();
+  for (const g of list) byCurrency.set(g.currency, (byCurrency.get(g.currency) ?? 0) + g.myBalance);
+  const totals = [...byCurrency].filter(([, v]) => v !== 0);
+  if (!totals.length) return null;
+  return (
+    <section className="card totals">
+      <h2 className="section-label">{copy.group.total}</h2>
+      <div className="totals__items">
+        {totals.map(([currency, v]) => (
+          <div key={currency} className="totals__item">
+            <span className="hint">{v > 0 ? copy.balance.owedToYou : copy.balance.youOwe}</span>
+            <span className={`n totals__amount ${v > 0 ? 'plus' : 'minus'}`}>{moneyCur(Math.abs(v), currency)}</span>
+          </div>
+        ))}
+      </div>
+      {byCurrency.size > 1 && <p className="hint-sm">{copy.balance.currenciesNote}</p>}
+    </section>
+  );
+}
+
+/** M01 / D01: список групп с балансом в каждой и общим итогом по валютам. */
 export function GroupsPage() {
-  const me = useMe().data!;
+  const me = useCurrentUser();
   const groups = useQuery({ queryKey: ['groups'], queryFn: () => api<GroupSummaryDto[]>('GET', '/api/groups') });
   const list = groups.data ?? [];
   const open = list.filter((g) => g.status === 'open');
@@ -59,6 +92,9 @@ export function GroupsPage() {
           <ProfileMenu me={me} compact />
         </header>
         {groups.isPending && <p className="hint" style={{ padding: '12px 20px' }}>Загружаем…</p>}
+        <div style={{ padding: '12px 20px 0' }}>
+          <Totals list={list} />
+        </div>
         {open.length > 0 && (
           <section style={{ marginTop: 20 }}>
             <h2 className="section-label" style={{ margin: '0 20px 8px' }}>
@@ -74,7 +110,7 @@ export function GroupsPage() {
                     </span>
                   </div>
                   <div className="group-link__side">
-                    <span className="hint-sm">без расходов</span>
+                    <BalanceSide g={g} />
                   </div>
                 </Link>
               ))}
@@ -97,6 +133,9 @@ export function GroupsPage() {
                     <span className="group-link__meta">
                       {symbol(g.currency)} · закрыта {g.closedAt ? dayMonth(g.closedAt) : ''}
                     </span>
+                  </div>
+                  <div className="group-link__side">
+                    <BalanceSide g={g} />
                   </div>
                 </Link>
               ))}
@@ -127,6 +166,7 @@ export function GroupsPage() {
               {copy.group.newGroup}
             </Link>
           </div>
+          <Totals list={list} />
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink-2)' }}>Все группы</h2>
             <div className="card" style={{ overflowX: 'auto' }}>
@@ -160,7 +200,15 @@ export function GroupsPage() {
                           {g.memberCount <= 4 ? g.memberNames.join(', ') : members(g.memberCount)}
                         </span>
                       </td>
-                      <td className="hint">без расходов</td>
+                      <td>
+                        {g.myBalance === 0 ? (
+                          <span className="hint">в расчёте</span>
+                        ) : (
+                          <span className={`n ${g.myBalance > 0 ? 'plus' : 'minus'}`} style={{ fontWeight: 600 }}>
+                            {money(g.myBalance, g.currency, true)}
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

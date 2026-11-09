@@ -1,3 +1,4 @@
+import { must } from '@se/shared';
 import { requestCodeSchema, updateProfileSchema, verifyCodeSchema, type Me } from '@se/shared';
 import { and, count, desc, eq, gt, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
@@ -15,7 +16,7 @@ const MAX_CODE_ATTEMPTS = 5;
 const CODES_PER_WINDOW = 5;
 const CODE_WINDOW_MS = 15 * 60_000;
 
-export async function authRoutes(app: FastifyInstance) {
+export function authRoutes(app: FastifyInstance): Promise<void> {
   /** Шаг 1: прислать код на почту. Аккаунт создаётся при первом успешном вводе кода. */
   app.post('/api/auth/request-code', async (req, reply) => {
     const { email } = parse(requestCodeSchema, req.body);
@@ -40,7 +41,7 @@ export async function authRoutes(app: FastifyInstance) {
         .insert(loginCodes)
         .values({ email, codeHash: hashCode(email, code), expiresAt: new Date(Date.now() + CODE_TTL_MS) })
         .returning({ id: loginCodes.id });
-      await enqueueEmail(tx, `login:${row!.id}`, loginCodeEmail(email, code));
+      await enqueueEmail(tx, `login:${must(row).id}`, loginCodeEmail(email, code));
       req.log.info({ email }, 'login code queued');
     });
 
@@ -74,8 +75,9 @@ export async function authRoutes(app: FastifyInstance) {
         .values({ email })
         .onConflictDoUpdate({ target: users.email, set: { email } })
         .returning({ id: users.id, email: users.email, name: users.name, gender: users.gender });
-      await createSession(tx, user!.id, reply);
-      return user!;
+      const me = must(user, 'пользователь');
+      await createSession(tx, me.id, reply);
+      return me;
     });
 
     // Неверный код: счётчик попыток уже сохранён, транзакция закоммичена.
@@ -88,7 +90,7 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.status(204).send();
   });
 
-  app.get('/api/me', async (req) => requireUser(req) satisfies Me);
+  app.get('/api/me', (req) => requireUser(req) satisfies Me);
 
   app.patch('/api/me', async (req) => {
     const user = requireUser(req);
@@ -98,6 +100,7 @@ export async function authRoutes(app: FastifyInstance) {
       .set({ name, gender })
       .where(eq(users.id, user.id))
       .returning({ id: users.id, email: users.email, name: users.name, gender: users.gender });
-    return updated! satisfies Me;
+    return must(updated, 'пользователь') satisfies Me;
   });
+  return Promise.resolve();
 }

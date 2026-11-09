@@ -1,4 +1,4 @@
-import { CURRENCIES, currencyName, currencySymbol, QUICK_CURRENCIES, type CurrencyCode } from '@se/shared';
+import { CURRENCIES, currencyName, currencySymbol, must, QUICK_CURRENCIES, type CurrencyCode } from '@se/shared';
 
 /** Валюта: три частые сегментами и «Другая» со списком (M09). */
 export function CurrencyPicker({ value, onChange }: { value: CurrencyCode; onChange: (c: CurrencyCode) => void }) {
@@ -11,16 +11,25 @@ export function CurrencyPicker({ value, onChange }: { value: CurrencyCode; onCha
       </span>
       <div role="radiogroup" aria-labelledby="cur" className="segments">
         {QUICK_CURRENCIES.map((c) => (
-          <button key={c} type="button" role="radio" aria-checked={value === c} aria-label={currencyName(c)} onClick={() => onChange(c)}>
+          <button key={c} type="button" role="radio" aria-checked={value === c} aria-label={currencyName(c)} onClick={() => {
+              onChange(c);
+            }}
+          >
             {currencySymbol(c)}
           </button>
         ))}
-        <button type="button" role="radio" aria-checked={!isQuick} onClick={() => !isQuick || onChange(others[0]!)}>
+        <button type="button" role="radio" aria-checked={!isQuick} onClick={() => {
+            if (isQuick) onChange(must(others[0], 'другая валюта'));
+          }}
+        >
           Другая
         </button>
       </div>
       {!isQuick && (
-        <select className="select" aria-label="Другая валюта" value={value} onChange={(e) => onChange(e.target.value as CurrencyCode)}>
+        <select className="select" aria-label="Другая валюта" value={value} onChange={(e) => {
+            onChange(e.target.value as CurrencyCode);
+          }}
+        >
           {others.map((c) => (
             <option key={c} value={c}>
               {capitalize(currencyName(c))}, {currencySymbol(c)}
@@ -35,13 +44,13 @@ export function CurrencyPicker({ value, onChange }: { value: CurrencyCode; onCha
   );
 }
 
-export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** «Рубль, ₽» как в макетах. */
 export function currencyLabel(code: string) {
   try {
     const c = code as CurrencyCode;
-    return `${capitalize(currencyName(c).split(' ').at(-1)!)}, ${currencySymbol(c)}`;
+    return `${capitalize(currencyName(c).split(' ').at(-1) ?? c)}, ${currencySymbol(c)}`;
   } catch {
     return code;
   }

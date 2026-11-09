@@ -15,17 +15,23 @@ export function ProfileMenu({ me, compact }: { me: Me; compact?: boolean }) {
   const logout = async () => {
     await api('POST', '/api/auth/logout');
     qc.clear();
-    navigate('/login', { replace: true });
+    void navigate('/login', { replace: true });
   };
 
   return (
     <div style={{ position: 'relative' }}>
       {compact ? (
-        <button aria-label={`Профиль: ${name}`} className="avatar avatar--lg" style={{ cursor: 'pointer' }} onClick={() => setOpen((v) => !v)}>
+        <button aria-label={`Профиль: ${name}`} className="avatar avatar--lg" style={{ cursor: 'pointer' }} onClick={() => {
+            setOpen((v) => !v);
+          }}
+        >
           {name.charAt(0).toUpperCase()}
         </button>
       ) : (
-        <button aria-label={`Профиль: ${name}`} className="profile-btn" onClick={() => setOpen((v) => !v)}>
+        <button aria-label={`Профиль: ${name}`} className="profile-btn" onClick={() => {
+            setOpen((v) => !v);
+          }}
+        >
           <Avatar name={name} />
           {name}
         </button>
@@ -35,7 +41,7 @@ export function ProfileMenu({ me, compact }: { me: Me; compact?: boolean }) {
           <p className="hint" style={{ padding: '6px 10px' }}>
             {me.email}
           </p>
-          <button className="btn" style={{ width: '100%', border: 0, justifyContent: 'flex-start' }} onClick={logout}>
+          <button className="btn" style={{ width: '100%', border: 0, justifyContent: 'flex-start' }} onClick={() => void logout()}>
             Выйти
           </button>
         </div>
