@@ -10,6 +10,7 @@ import { GroupsPage } from './pages/GroupsPage.js';
 import { InvitePage } from './pages/InvitePage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
+import { ReportPage } from './pages/ReportPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
 import { SettlementPage } from './pages/SettlementPage.js';
 
@@ -45,6 +46,7 @@ export function App() {
           <Route path="/groups/:id/feed" element={<RequireUser><GroupPage tab="feed" /></RequireUser>} />
           <Route path="/groups/:id/settlements/:settlementId" element={<RequireUser><SettlementPage /></RequireUser>} />
           <Route path="/groups/:id/settings" element={<RequireUser><SettingsPage /></RequireUser>} />
+          <Route path="/groups/:id/report" element={<RequireUser><ReportPage /></RequireUser>} />
           <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </RealtimeProvider>
