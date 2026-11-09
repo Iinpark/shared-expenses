@@ -197,16 +197,30 @@ export async function updateExpense(
   return after;
 }
 
-/** Удаление (мягкое). Тоже по версии: нельзя удалить расход, который кто-то только что поменял, не увидев правку. */
-export async function deleteExpense(tx: Tx, expenseId: string, userId: string, version: number) {
+/**
+ * Удаление (мягкое). Тоже по версии: нельзя удалить расход, который кто-то только что поменял, не увидев правку.
+ * Возвращает имя файла чека, который больше не нужен: вызывающий удалит его с диска после коммита.
+ */
+export async function deleteExpense(tx: Tx, expenseId: string, userId: string, version: number): Promise<string | null> {
+  const [current] = await tx.select({ receiptFile: expenses.receiptFile }).from(expenses).where(eq(expenses.id, expenseId));
   const [row] = await tx
     .update(expenses)
-    .set({ deletedAt: new Date(), updatedBy: userId, updatedAt: new Date(), version: dsql`${expenses.version} + 1` })
+    .set({
+      deletedAt: new Date(),
+      updatedBy: userId,
+      updatedAt: new Date(),
+      version: dsql`${expenses.version} + 1`,
+      receiptFile: null,
+      receiptName: null,
+      receiptType: null,
+      receiptSize: null,
+    })
     .where(and(eq(expenses.id, expenseId), eq(expenses.version, version), isNull(expenses.deletedAt)))
     .returning();
   if (!row) throw await versionConflict(tx, expenseId);
   // Доли при мягком удалении остаются в базе, поэтому снимок полный.
   await recordEvent(tx, row.groupId, userId, { type: 'expense_deleted', before: snapshot(await expenseDto(tx, row)) });
+  return current?.receiptFile ?? null;
 }
 
 /**

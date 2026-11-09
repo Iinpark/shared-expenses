@@ -76,7 +76,8 @@ async function trackDebt(tx: Tx, groupId: string, m: MemberRow, debt: number, no
 
 /** Одна группа под блокировкой: два экземпляра проверки не отправят одно письмо дважды. */
 async function remindGroup(tx: Tx, groupId: string, now: Date): Promise<number> {
-  const [group] = await tx.select().from(groups).where(eq(groups.id, groupId)).for('update');
+  // SKIP LOCKED: если группу сейчас меняет запрос пользователя, не ждём её — проверим на следующем круге.
+  const [group] = await tx.select().from(groups).where(eq(groups.id, groupId)).for('update', { skipLocked: true });
   if (group?.status !== 'open') return 0;
   const balances = (await balancesByGroup(tx, [groupId])).get(groupId) ?? new Map<string, number>();
   const list = await members(tx, groupId);

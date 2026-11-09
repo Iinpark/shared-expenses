@@ -3,12 +3,12 @@ import { canEditExpense, RECEIPT_MAX_BYTES, type ExpenseDto, type ReceiptType } 
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { createReadStream } from 'node:fs';
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
 import { z } from 'zod';
 import { requireProfile } from '../auth/session.js';
 import { config } from '../config.js';
+import { receiptPath, removeFile } from './storage.js';
 import { db, type Tx } from '../db/client.js';
 import { expenses } from '../db/schema.js';
 import { expenseDto, getMemberExpense } from '../expenses/service.js';
@@ -44,7 +44,12 @@ async function lockForEdit(tx: Tx, expenseId: string, userId: string) {
   return expense;
 }
 
-const removeFile = (file: string | null) => (file ? rm(join(config.uploadDir, file), { force: true }) : Promise.resolve());
+/** Быстрая проверка прав без блокировок — до чтения тела запроса. */
+async function assertCanEdit(expenseId: string, userId: string) {
+  const { expense, group } = await getMemberExpense(db, expenseId, userId);
+  if (!canEditExpense(expense, userId, group.ownerId)) throw forbidden('Чек может приложить тот, кто платил, кто внёс расход, или создатель группы');
+}
+
 
 /**
  * Файл чека к расходу: один на расход, новый заменяет старый. Хранится на диске сервера
@@ -57,6 +62,9 @@ export async function receiptRoutes(app: FastifyInstance): Promise<void> {
   app.put('/api/expenses/:id/receipt', async (req): Promise<ExpenseDto> => {
     const user = requireProfile(req);
     const { id } = parse(params, req.params);
+    // Права проверяем до того, как читать 10 МБ тела: чужой не заставит сервер принимать и писать файлы.
+    // Под блокировкой группы права проверяются ещё раз.
+    await assertCanEdit(id, user.id);
     const file = await req.file();
     if (!file) throw new HttpError(400, 'validation', 'Выбери файл чека');
     const data = await file.toBuffer().catch(() => {
@@ -65,10 +73,11 @@ export async function receiptRoutes(app: FastifyInstance): Promise<void> {
     const type = sniff(data);
     if (!type) throw new HttpError(400, 'validation', 'Чек — это фото (JPG, PNG) или PDF');
 
-    // Сначала файл во временное имя, потом запись в базе, и только после коммита — старый файл удаляем.
+    // Файл кладём под окончательным именем до записи в базу: после коммита ссылка уже указывает на
+    // существующий файл. Если транзакция не прошла — удаляем новый файл; старый удаляем только после коммита.
     const stored = `${randomUUID()}.${EXT[type]}`;
-    const tmp = join(config.uploadDir, `${stored}.part`);
-    await writeFile(tmp, data);
+    const path = receiptPath(stored);
+    await writeFile(path, data);
     try {
       const { dto, old } = await db.transaction(async (tx) => {
         const expense = await lockForEdit(tx, id, user.id);
@@ -80,11 +89,10 @@ export async function receiptRoutes(app: FastifyInstance): Promise<void> {
         if (!row) throw notFound('Расход не найден');
         return { dto: await expenseDto(tx, row), old: expense.receiptFile };
       });
-      await rename(tmp, join(config.uploadDir, stored));
       await removeFile(old);
       return dto;
     } catch (err) {
-      await rm(tmp, { force: true });
+      await rm(path, { force: true });
       throw err;
     }
   });
@@ -111,11 +119,21 @@ export async function receiptRoutes(app: FastifyInstance): Promise<void> {
     const { id } = parse(params, req.params);
     const { expense } = await getMemberExpense(db, id, user.id);
     if (!expense.receiptFile || !expense.receiptType) throw notFound('К расходу не приложен чек');
-    return reply
-      .header('content-type', expense.receiptType)
-      .header('content-disposition', `inline; filename*=UTF-8''${encodeURIComponent(expense.receiptName ?? 'чек')}`)
-      .header('x-content-type-options', 'nosniff')
-      .header('cache-control', 'private, max-age=3600')
-      .send(createReadStream(join(config.uploadDir, expense.receiptFile)));
+    const path = receiptPath(expense.receiptFile);
+    const exists = await stat(path).then(
+      () => true,
+      () => false,
+    );
+    if (!exists) throw notFound('Файл чека не найден');
+    return (
+      reply
+        .header('content-type', expense.receiptType)
+        .header('content-disposition', `inline; filename*=UTF-8''${encodeURIComponent(expense.receiptName ?? 'чек')}`)
+        .header('x-content-type-options', 'nosniff')
+        // Адрес чека не меняется при замене файла, поэтому кэш проверяется по ETag (имя файла уникально).
+        .header('cache-control', 'private, no-cache')
+        .header('etag', `"${expense.receiptFile}"`)
+        .send(createReadStream(path))
+    );
   });
 }

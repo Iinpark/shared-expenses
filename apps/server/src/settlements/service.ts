@@ -38,19 +38,20 @@ export async function listSettlements(tx: Tx, groupId: string): Promise<Settleme
   return rows.map(toDto);
 }
 
-/** Сколько должник уже отметил, но получатели ещё не подтвердили. */
-async function pendingFrom(tx: Tx, groupId: string, fromId: string): Promise<number> {
+/** Сколько уже отмечено и ещё не подтверждено: от этого человека (side = from) или ему (side = to). */
+async function pendingSum(tx: Tx, groupId: string, side: 'from' | 'to', userId: string): Promise<number> {
+  const column = side === 'from' ? settlements.fromId : settlements.toId;
   const [row] = await tx
     .select({ sum: dsql<string>`coalesce(sum(${settlements.amount}), 0)` })
     .from(settlements)
-    .where(and(eq(settlements.groupId, groupId), eq(settlements.fromId, fromId), eq(settlements.status, 'pending')));
+    .where(and(eq(settlements.groupId, groupId), eq(column, userId), eq(settlements.status, 'pending')));
   return Number(row?.sum ?? 0);
 }
 
 /**
  * Должник отмечает, что передал деньги. Отмечать можно только тому, кому вернут (баланс больше нуля),
- * и не больше, чем с тебя сейчас минус уже отмеченное и ещё не подтверждённое: иначе можно было бы
- * «погасить» больше долга. Группа заблокирована вызывающим, поэтому балансы не поменяются между проверкой и записью.
+ * не больше, чем с тебя сейчас, и не больше, чем вернут получателю — оба раза за вычетом уже
+ * отмеченного и не подтверждённого: иначе можно было бы «погасить» больше долга. Группа заблокирована вызывающим, поэтому балансы не поменяются между проверкой и записью.
  */
 export async function createSettlement(tx: Tx, group: GroupRow, fromId: string, input: CreateInput): Promise<SettlementDto> {
   if (input.toId === fromId) throw new HttpError(400, 'validation', 'Себе переводить не нужно');
@@ -58,9 +59,12 @@ export async function createSettlement(tx: Tx, group: GroupRow, fromId: string, 
   const toBalance = balances.get(input.toId);
   if (toBalance === undefined) throw new HttpError(400, 'validation', 'Получатель не состоит в группе');
   if (toBalance <= 0) throw conflict('nothing_to_settle', 'Этому участнику ничего не должны вернуть');
-  const owed = -(balances.get(fromId) ?? 0) - (await pendingFrom(tx, group.id, fromId));
+  const owed = -(balances.get(fromId) ?? 0) - (await pendingSum(tx, group.id, 'from', fromId));
   if (owed <= 0) throw conflict('nothing_to_settle', 'С тебя ничего не осталось: всё уже отмечено или погашено');
-  if (input.amount > owed) throw conflict('settlement_too_big', 'Это больше, чем с тебя сейчас');
+  // И не больше, чем вернут получателю (за вычетом того, что ему уже отметили другие): иначе
+  // после подтверждения получатель сам стал бы должником, хотя только платил.
+  const toLeft = toBalance - (await pendingSum(tx, group.id, 'to', input.toId));
+  if (input.amount > Math.min(owed, toLeft)) throw conflict('settlement_too_big', 'Это больше, чем с тебя сейчас этому человеку');
 
   const [row] = await tx
     .insert(settlements)

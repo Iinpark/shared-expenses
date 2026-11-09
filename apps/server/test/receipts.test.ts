@@ -1,6 +1,12 @@
 import { must, type ExpenseDto } from '@se/shared';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { sql } from '../src/db/client.js';
+import { eq } from 'drizzle-orm';
+import { existsSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { config } from '../src/config.js';
+import { db, sql } from '../src/db/client.js';
+import { expenses } from '../src/db/schema.js';
 import { errorOf, login, makeApp, resetDb } from './helpers.js';
 import { kazanKit, type Cookie } from './kazan.js';
 
@@ -78,4 +84,24 @@ describe('чек к расходу', () => {
     expect(del.json<ExpenseDto>().receipt).toBeNull();
     expect((await req('GET', cookies.anya, `/api/expenses/${flatId}/receipt`)).statusCode).toBe(404);
   });
+
+  it('файл пропал с диска — понятный 404, а не падение сервера', async () => {
+    const { cookies, flatId } = await setup();
+    await upload(cookies.anya, flatId, PNG, 'x.png');
+    const [row] = await db.select({ file: expenses.receiptFile }).from(expenses).where(eq(expenses.id, flatId));
+    await rm(join(config.uploadDir, must(must(row).file)));
+    const res = await req('GET', cookies.anya, `/api/expenses/${flatId}/receipt`);
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('при удалении расхода файл чека удаляется с диска', async () => {
+    const { cookies, flatId } = await setup();
+    await upload(cookies.anya, flatId, PNG, 'x.png');
+    const [row] = await db.select({ file: expenses.receiptFile }).from(expenses).where(eq(expenses.id, flatId));
+    const path = join(config.uploadDir, must(must(row).file));
+    expect(existsSync(path)).toBe(true);
+    expect((await req('DELETE', cookies.anya, `/api/expenses/${flatId}?version=1`)).statusCode).toBe(204);
+    expect(existsSync(path)).toBe(false);
+  });
 });
+

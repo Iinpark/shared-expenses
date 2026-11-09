@@ -181,7 +181,9 @@ function OutgoingCard({ c, s }: { c: SettleCtx; s: SettlementDto }) {
     <Card kind="pending" icon={<Icon name="clock" />} title={title}>
       <div className="settle-card__line n">
         <span>После подтверждения</span>
-        {after < 0 ? <strong className="minus">{money(-after, c.g.currency)}</strong> : <strong>в расчёте</strong>}
+        {after < 0 && <strong className="minus">{money(-after, c.g.currency)}</strong>}
+        {after === 0 && <strong>в расчёте</strong>}
+        {after > 0 && <strong className="plus">тебе вернут {money(after, c.g.currency)}</strong>}
       </div>
       {c.g.status === 'open' && (
         <button

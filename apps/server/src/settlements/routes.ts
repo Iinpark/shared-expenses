@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireProfile } from '../auth/session.js';
 import { db } from '../db/client.js';
 import { assertOpen, getMemberGroup } from '../groups/service.js';
-import { parse } from '../lib/errors.js';
+import { HttpError, notFound, parse } from '../lib/errors.js';
 import { createSettlement, decideSettlement, getSettlement, listSettlements } from './service.js';
 
 const groupParams = z.object({ id: z.uuid({ message: 'Группа не найдена' }) });
@@ -41,7 +41,10 @@ export function settlementRoutes(app: FastifyInstance): Promise<void> {
     return db.transaction(async (tx) => {
       // Сначала группа (под блокировкой, и заодно проверка, что пользователь в ней), потом само погашение.
       const found = await getSettlement(tx, id);
-      const group = await getMemberGroup(tx, found.groupId, user.id, { lock: true });
+      // Чужому — тот же ответ, что и для несуществующего погашения: по id ничего не узнать.
+      const group = await getMemberGroup(tx, found.groupId, user.id, { lock: true }).catch((err: unknown) => {
+        throw err instanceof HttpError && err.status === 404 ? notFound('Погашение не найдено') : err;
+      });
       assertOpen(group);
       return decideSettlement(tx, await getSettlement(tx, id, { lock: true }), user.id, STATUS_BY_ACTION[action]);
     });

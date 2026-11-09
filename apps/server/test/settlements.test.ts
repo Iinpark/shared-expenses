@@ -118,4 +118,20 @@ describe('погашения', () => {
     expect(errorOf(await mark(cookies.gena, groupId, ids.anya, 100)).code).toBe('group_closed');
     expect(errorOf(await decide(cookies.anya, s.id, 'confirm')).code).toBe('group_closed');
   });
+
+  it('нельзя отметить получателю больше, чем ему вернут: иначе он сам стал бы должником', async () => {
+    const { groupId, cookies, ids } = await kazan();
+    // Аня платит 6 000 на троих, Вика — 3 000 за Бориса: Аня +4 000, Борис −5 000, Вика +1 000.
+    const equal = { mode: 'equal', userIds: [ids.anya, ids.boris, ids.vika] };
+    await req('POST', cookies.anya, `/api/groups/${groupId}/expenses`, { amount: 600_000, category: 'other', payerId: ids.anya, spentOn: '2026-10-16', split: equal });
+    await req('POST', cookies.vika, `/api/groups/${groupId}/expenses`, {
+      amount: 300_000, category: 'other', payerId: ids.vika, spentOn: '2026-10-16', split: { mode: 'equal', userIds: [ids.boris] },
+    });
+    expect(errorOf(await mark(cookies.boris, groupId, ids.vika, 500_000)).code).toBe('settlement_too_big');
+    expect((await mark(cookies.boris, groupId, ids.vika, 100_000)).statusCode).toBe(201);
+    // Вике уже отмечено всё, что ей вернут.
+    expect(errorOf(await mark(cookies.boris, groupId, ids.vika, 1)).code).toBe('settlement_too_big');
+    expect((await mark(cookies.boris, groupId, ids.anya, 400_000)).statusCode).toBe(201);
+  });
 });
+
