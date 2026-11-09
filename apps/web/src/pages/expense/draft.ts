@@ -68,7 +68,7 @@ function initialExact(expense: ExpenseDto | undefined, memberIds: string[], curr
 }
 
 /** Деление в виде запроса к API из состояния формы. */
-export function buildSplit(mode: SplitMode, memberIds: string[], selected: Set<string>, weights: Weights, exact: Texts, currency: CurrencyCode): SplitInput {
+function buildSplit(mode: SplitMode, memberIds: string[], selected: Set<string>, weights: Weights, exact: Texts, currency: CurrencyCode): SplitInput {
   switch (mode) {
     case 'equal':
       return { mode, userIds: memberIds.filter((id) => selected.has(id)) };
@@ -80,7 +80,7 @@ export function buildSplit(mode: SplitMode, memberIds: string[], selected: Set<s
 }
 
 /** Превью долей тем же кодом, что и на сервере (packages/shared/src/split.ts). */
-export function previewShares(total: number | null, split: SplitInput, joinOrder: ReadonlyMap<string, number>): { shares: ShareResult[] | null; splitError: string | null } {
+function previewShares(total: number | null, split: SplitInput, joinOrder: ReadonlyMap<string, number>): { shares: ShareResult[] | null; splitError: string | null } {
   if (!total) return { shares: null, splitError: null };
   try {
     return { shares: computeShares(total, split, joinOrder), splitError: null };
@@ -90,7 +90,7 @@ export function previewShares(total: number | null, split: SplitInput, joinOrder
 }
 
 /** Сумма из поля: null, если пусто, опечатка или больше лимита сервера. */
-export function parseTotal(text: string, currency: CurrencyCode) {
+function parseTotal(text: string, currency: CurrencyCode) {
   const parsed = parseAmount(text, currency);
   const tooBig = parsed !== null && parsed > MAX_AMOUNT;
   return { parsed, tooBig, total: tooBig ? null : parsed };
