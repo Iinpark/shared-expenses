@@ -25,6 +25,8 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
 
   app.decorateRequest('user', null);
   app.addHook('onRequest', async (req) => {
+    // /api/health должен ответить «degraded», а не 500, даже если база лежит.
+    if (req.url === '/api/health') return;
     req.user = await loadUser(req.cookies[SESSION_COOKIE]);
   });
 

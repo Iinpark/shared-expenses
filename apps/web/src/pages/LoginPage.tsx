@@ -3,11 +3,14 @@ import { AuthFlow } from '../components/AuthFlow.js';
 import { useMe } from '../lib/session.js';
 
 export function LoginPage() {
-  const me = useMe().data;
+  const meQuery = useMe();
+  const me = meQuery.data;
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const next = params.get('next') ?? '/';
   if (me?.name) return <Navigate to={next} replace />;
+  // Пока не знаем, вошёл ли человек, форму не показываем: иначе вошедший без имени попадёт на шаг почты.
+  if (meQuery.isPending) return null;
 
   return (
     <div className="solo">

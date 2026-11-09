@@ -40,7 +40,7 @@ export interface Me {
 // ---------- Группы ----------
 
 export const groupNameSchema = z.string().trim().min(1, 'Назови группу').max(60);
-export const reminderDaysSchema = z.number().int().min(1).max(90);
+export const reminderDaysSchema = z.number({ message: 'От 1 до 90 дней' }).int('От 1 до 90 дней').min(1, 'От 1 до 90 дней').max(90, 'От 1 до 90 дней');
 
 export const createGroupSchema = z.object({
   name: groupNameSchema,
@@ -55,7 +55,8 @@ export const updateGroupSchema = z
     currency: z.enum(CURRENCIES),
     reminderDays: reminderDaysSchema,
   })
-  .partial();
+  .partial()
+  .refine((p) => Object.keys(p).length > 0, 'Нечего сохранять');
 
 export const inviteEmailsSchema = z.object({ emails: z.array(emailSchema).min(1).max(30) });
 

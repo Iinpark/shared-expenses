@@ -1,16 +1,19 @@
 import type { GroupDto, GroupSummaryDto, InvitePreviewDto, MemberDto } from '@se/shared';
-import { and, asc, eq, inArray, isNull, sql as dsql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lte, sql as dsql } from 'drizzle-orm';
 import { config } from '../config.js';
 import type { Tx } from '../db/client.js';
 import { groupMembers, groups, invites, users } from '../db/schema.js';
 import { randomToken } from '../lib/crypto.js';
-import { conflict, forbidden, notFound } from '../lib/errors.js';
 import { balancesByGroup, hasExpenses } from '../expenses/service.js';
+import { conflict, forbidden, HttpError, notFound } from '../lib/errors.js';
 import { enqueueEmail } from '../mail/outbox.js';
 import { inviteEmail } from '../mail/templates.js';
 
 /** Ссылка живёт две недели: старая ссылка не должна годами ходить по чатам. */
 export const INVITE_TTL_MS = 14 * 86_400_000;
+
+/** Сколько приглашений по почте один человек может разослать за сутки: защита от рассылки спама через приложение. */
+export const EMAIL_INVITES_PER_DAY = 100;
 
 export const inviteUrl = (token: string) => `${config.webOrigin}/j/${token}`;
 
@@ -88,7 +91,19 @@ async function activeLinkToken(tx: Tx, groupId: string, userId: string): Promise
     .limit(1);
   if (link && link.expiresAt > new Date()) return link.token;
   if (link) await tx.update(invites).set({ revokedAt: new Date() }).where(eq(invites.id, link.id));
-  return createLinkInvite(tx, groupId, userId);
+  // Два одновременных GET могут оба увидеть истёкшую ссылку. Уникальный индекс пропустит
+  // только одну новую; второй запрос молча возьмёт ту, что успел создать первый.
+  const token = randomToken(10);
+  await tx
+    .insert(invites)
+    .values({ groupId, kind: 'link', token, createdBy: userId, expiresAt: new Date(Date.now() + INVITE_TTL_MS) })
+    .onConflictDoNothing();
+  const [active] = await tx
+    .select({ token: invites.token })
+    .from(invites)
+    .where(and(eq(invites.groupId, groupId), eq(invites.kind, 'link'), isNull(invites.revokedAt)))
+    .limit(1);
+  return active!.token;
 }
 
 /** Приглашения по почте: письмо каждому адресу, кроме тех, кто уже в группе или уже приглашён. */
@@ -101,6 +116,31 @@ export async function inviteByEmail(
   const members = await listMembers(tx, group.id, group.ownerId);
   const memberEmails = new Set(members.map((m) => m.email));
   const unique = [...new Set(emails)].filter((e) => !memberEmails.has(e));
+
+  const [sent] = await tx
+    .select({ n: dsql<number>`count(*)`.mapWith(Number) })
+    .from(invites)
+    .where(and(eq(invites.createdBy, inviter.id), eq(invites.kind, 'email'), gt(invites.createdAt, new Date(Date.now() - 86_400_000))));
+  if (sent!.n + unique.length > EMAIL_INVITES_PER_DAY) {
+    throw new HttpError(429, 'too_many_invites', 'Слишком много приглашений за сутки. Позови остальных по ссылке.');
+  }
+
+  // Истёкшие приглашения на эти адреса закрываем, иначе уникальный индекс молча не даст пригласить заново.
+  if (unique.length) {
+    await tx
+      .update(invites)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(invites.groupId, group.id),
+          eq(invites.kind, 'email'),
+          inArray(invites.email, unique),
+          isNull(invites.revokedAt),
+          isNull(invites.acceptedAt),
+          lte(invites.expiresAt, new Date()),
+        ),
+      );
+  }
 
   for (const email of unique) {
     const token = randomToken(10);
@@ -227,6 +267,8 @@ async function findInvite(tx: Tx, token: string) {
 function invalidReason(invite: typeof invites.$inferSelect, group: GroupRow): 'rotated' | 'expired' | 'closed' | null {
   if (group.status === 'closed') return 'closed';
   if (invite.revokedAt) return 'rotated';
+  // Приглашение по почте одноразовое: после вступления пересланное письмо уже не пустит в группу.
+  if (invite.kind === 'email' && invite.acceptedAt) return 'rotated';
   if (invite.expiresAt <= new Date()) return 'expired';
   return null;
 }
@@ -252,11 +294,14 @@ export async function previewInvite(tx: Tx, token: string, userId: string | null
 
 /** Вступление по приглашению. Повторное вступление безопасно и просто возвращает группу. */
 export async function acceptInvite(tx: Tx, token: string, userId: string) {
-  const { invite } = await findInvite(tx, token);
-  const [group] = await tx.select().from(groups).where(eq(groups.id, invite.groupId)).for('update');
-  const reason = invalidReason(invite, group!);
+  const { invite: found } = await findInvite(tx, token);
+  const [group] = await tx.select().from(groups).where(eq(groups.id, found.groupId)).for('update');
+  // Перечитываем приглашение уже под блокировкой группы: пока мы ждали, ссылку могли заменить.
+  const [invite] = await tx.select().from(invites).where(eq(invites.id, found.id));
+  const reason = invalidReason(invite!, group!);
   if (reason) throw conflict('invite_expired', 'Приглашение больше не работает');
+  // addMember сам отметит приглашение по почте принятым, если адрес вступившего совпадает.
+  // Чужое приглашение (переслали письмо) работает как ссылка и не «съедает» приглашение адресата.
   await addMember(tx, group!.id, userId);
-  if (invite.kind === 'email') await tx.update(invites).set({ acceptedAt: invite.acceptedAt ?? new Date() }).where(eq(invites.id, invite.id));
   return group!;
 }
