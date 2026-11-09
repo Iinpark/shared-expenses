@@ -33,6 +33,8 @@ export const groupEventTypeEnum = pgEnum('group_event_type', [
   'settlement_confirmed',
   'settlement_rejected',
   'settlement_cancelled',
+  'group_closed',
+  'group_reopened',
 ]);
 export const settlementStatusEnum = pgEnum('settlement_status', ['pending', 'confirmed', 'rejected', 'cancelled']);
 export const splitModeEnum = pgEnum('split_mode', ['equal', 'shares', 'exact']);

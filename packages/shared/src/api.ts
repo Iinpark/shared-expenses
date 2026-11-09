@@ -220,7 +220,8 @@ export type GroupEventPayload =
   | { type: 'expense_deleted'; before: ExpenseSnapshot }
   | { type: 'member_joined'; userId: string; name: string }
   | { type: 'group_updated'; changes: { field: 'name' | 'currency' | 'reminderDays'; from: string | number; to: string | number }[] }
-  | { type: 'settlement_created' | 'settlement_confirmed' | 'settlement_rejected' | 'settlement_cancelled'; settlement: SettlementSnapshot };
+  | { type: 'settlement_created' | 'settlement_confirmed' | 'settlement_rejected' | 'settlement_cancelled'; settlement: SettlementSnapshot }
+  | { type: 'group_closed' | 'group_reopened' };
 
 /** Погашение в событии ленты. */
 export interface SettlementSnapshot {

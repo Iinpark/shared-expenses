@@ -5,6 +5,7 @@ import { requireProfile } from '../auth/session.js';
 import { config } from '../config.js';
 import { db, type Tx } from '../db/client.js';
 import { groups, users } from '../db/schema.js';
+import { recordEvent } from '../events/service.js';
 import { assertOwner, getMemberGroup, groupDto } from '../groups/service.js';
 import { conflict, parse } from '../lib/errors.js';
 import { enqueueEmail } from '../mail/outbox.js';
@@ -50,6 +51,7 @@ export function reportRoutes(app: FastifyInstance): Promise<void> {
       const [closed] = await tx.update(groups).set({ status: 'closed', closedAt: new Date() }).where(eq(groups.id, id)).returning();
       if (!closed) throw new Error('Группа не закрылась');
       await sendClosedEmails(tx, closed, user);
+      await recordEvent(tx, id, user.id, { type: 'group_closed' });
       return groupDto(tx, closed, user.id);
     });
   });
@@ -63,6 +65,7 @@ export function reportRoutes(app: FastifyInstance): Promise<void> {
       if (group.status === 'open') throw conflict('group_open', 'Группа уже открыта');
       const [opened] = await tx.update(groups).set({ status: 'open', closedAt: null }).where(eq(groups.id, id)).returning();
       if (!opened) throw new Error('Группа не открылась');
+      await recordEvent(tx, id, user.id, { type: 'group_reopened' });
       return groupDto(tx, opened, user.id);
     });
   });
