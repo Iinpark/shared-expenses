@@ -2367,3 +2367,26 @@ a.receipt-mark {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/** Получатель три дня не подтверждает погашение: «… ждут тебя · давно» и выделенная карточка. */
+.pill--overdue {
+  border: 1.5px solid var(--minus);
+  background: var(--minus-tint);
+  color: var(--minus-strong);
+  font-weight: 500;
+}
+.settle-card--overdue {
+  border: 1.5px solid var(--minus);
+  background: var(--minus-tint);
+}
+.settle-card__overdue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--minus-strong);
+}
+.settle-card--overdue .settle-card__top > svg {
+  color: var(--minus);
+}

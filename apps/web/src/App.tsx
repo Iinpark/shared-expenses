@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
 import { LiveToastListener } from './components/LiveToast.js';
+import { NudgeToast } from './components/NudgeToast.js';
 import { ToastProvider } from './components/Toast.js';
 import { RealtimeProvider, useMe } from './lib/queries/index.js';
 import { CreateGroupPage } from './pages/CreateGroupPage.js';
@@ -24,6 +25,7 @@ function RequireUser({ children }: { children: ReactNode }) {
   return (
     <>
       <LiveToastListener />
+      <NudgeToast />
       {children}
     </>
   );

@@ -7,7 +7,7 @@ import { memberOf } from '../../lib/events.js';
 import { money, moneyCur } from '../../lib/format.js';
 import { errorText, useDecideSettlement, type SettlementDecision } from '../../lib/queries/index.js';
 import { dayMonth, plural } from '../../lib/ru.js';
-import { allowedTo, balanceOf, daysSince, pendingFrom, previewConfirm, readDismissed, recentlyConfirmed, rejectedToShow, transferAmount, writeDismissed } from '../../lib/settlements.js';
+import { allowedTo, balanceOf, daysSince, overdueDays, pendingFrom, previewConfirm, readDismissed, recentlyConfirmed, rejectedToShow, transferAmount, writeDismissed } from '../../lib/settlements.js';
 import type { MarkRequest } from './SettleSheet.js';
 
 /** Всё, что нужно карточкам погашений на экране группы (S01, M02, D02). */
@@ -44,7 +44,9 @@ function useDecide(c: SettleCtx) {
   return { run, busy: decide.isPending, error: decide.error ? errorText(decide.error) : null };
 }
 
-function Card({ kind, icon, title, children }: { kind: 'pending' | 'rejected' | 'confirmed'; icon: ReactNode; title: ReactNode; children?: ReactNode }) {
+type CardKind = 'pending' | 'overdue' | 'rejected' | 'confirmed';
+
+function Card({ kind, icon, title, children }: { kind: CardKind; icon: ReactNode; title: ReactNode; children?: ReactNode }) {
   return (
     <div className={`settle-card settle-card--${kind}`} role={kind === 'rejected' ? 'alert' : undefined}>
       <div className="settle-card__top">
@@ -65,13 +67,24 @@ const ErrorLine = ({ error }: { error: string | null }) =>
 
 // ---------- Получатель: «Гена отметил перевод» ----------
 
+/** Три дня и дольше без ответа: «Ждёт тебя уже 4 дня» (DECISIONS, раздел 9). */
+function OverdueLine({ days }: { days: number }) {
+  return (
+    <p className="settle-card__overdue n">
+      Ждёт тебя уже {days} {plural(days, 'день', 'дня', 'дней')}
+    </p>
+  );
+}
+
 function IncomingCard({ c, s }: { c: SettleCtx; s: SettlementDto }) {
   const [asking, setAsking] = useState(false);
   const { run, busy, error } = useDecide(c);
   const from = nameOf(c.g, s.fromId);
   const after = transferAmount(previewConfirm(c.balances, s), s.fromId, c.meId);
+  const overdue = c.g.status === 'open' ? overdueDays(s) : null;
   const title = (
     <>
+      {overdue !== null && <OverdueLine days={overdue} />}
       <p className="settle-card__title n">
         {from} {byGender(genderOf(c.g, s.fromId), 'отметил', 'отметила')} перевод {moneyCur(s.amount, c.g.currency)}
       </p>
@@ -82,7 +95,7 @@ function IncomingCard({ c, s }: { c: SettleCtx; s: SettlementDto }) {
     </>
   );
   return (
-    <Card kind="pending" icon={<Icon name="clock" />} title={title}>
+    <Card kind={overdue === null ? 'pending' : 'overdue'} icon={<Icon name="clock" />} title={title}>
       <div className="settle-card__line n">
         <span>Если подтвердишь, {from} вернёт ещё</span>
         <strong className="plus">{money(after, c.g.currency)}</strong>

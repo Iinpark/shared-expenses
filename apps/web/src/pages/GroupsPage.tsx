@@ -1,4 +1,4 @@
-import type { GroupSummaryDto } from '@se/shared';
+import type { GroupSummaryDto, SettlementDto } from '@se/shared';
 import { currencySymbol, type CurrencyCode } from '@se/shared';
 import { Link } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
@@ -8,6 +8,7 @@ import { copy, fill } from '../lib/copy.js';
 import { money, moneyCur } from '../lib/format.js';
 import { dayMonth, members } from '../lib/ru.js';
 import { useCurrentUser, useGroups, usePendingToMe } from '../lib/queries/index.js';
+import { oldestOverdue } from '../lib/settlements.js';
 
 const symbol = (c: string) => {
   try {
@@ -18,7 +19,7 @@ const symbol = (c: string) => {
 };
 
 /** Баланс в группе для строки списка: «тебе вернут 3 166,66 ₽», «с тебя …», «в расчёте». */
-function BalanceSide({ g, pending = 0 }: { g: GroupSummaryDto; pending?: number }) {
+function BalanceSide({ g, pending = [] }: { g: GroupSummaryDto; pending?: SettlementDto[] }) {
   if (g.myBalance === 0) return <span className="hint-sm">в расчёте</span>;
   return (
     <>
@@ -26,15 +27,21 @@ function BalanceSide({ g, pending = 0 }: { g: GroupSummaryDto; pending?: number 
       <span className={`n ${g.myBalance > 0 ? 'plus' : 'minus'}`} style={{ fontWeight: 600, fontSize: 16 }}>
         {moneyCur(Math.abs(g.myBalance), g.currency)}
       </span>
-      <PendingPill amount={pending} currency={g.currency} />
+      <PendingPill pending={pending} currency={g.currency} />
     </>
   );
 }
 
-/** StatusPill «2 000,00 ждут тебя»: отмеченные переводы тебе, которые ты ещё не подтвердил. */
-function PendingPill({ amount, currency }: { amount: number; currency: string }) {
+/**
+ * StatusPill «2 000,00 ждут тебя»: отмеченные переводы тебе, которые ты ещё не подтвердил.
+ * Если какой-то ждёт три дня и дольше — «давно» и цвет предупреждения (DECISIONS, раздел 9).
+ */
+function PendingPill({ pending = [], currency }: { pending?: SettlementDto[]; currency: string }) {
+  const amount = pending.reduce((sum, s) => sum + s.amount, 0);
   if (amount <= 0) return null;
-  return <span className="pill pill--pending n">{fill(copy.settlement.pendingPill, { amount: money(amount, currency) })}</span>;
+  const text = fill(copy.settlement.pendingPill, { amount: money(amount, currency) });
+  if (!oldestOverdue(pending)) return <span className="pill pill--pending n">{text}</span>;
+  return <span className="pill pill--overdue n">{text} · давно</span>;
 }
 
 /** Общий итог по всем группам — отдельно по каждой валюте, без сложения разных валют. */
@@ -219,7 +226,7 @@ export function GroupsPage() {
                           </span>
                         )}
                         <span style={{ display: 'block' }}>
-                          <PendingPill amount={pendingToMe.get(g.id) ?? 0} currency={g.currency} />
+                          <PendingPill pending={pendingToMe.get(g.id)} currency={g.currency} />
                         </span>
                       </td>
                     </tr>
