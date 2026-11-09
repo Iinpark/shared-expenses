@@ -265,7 +265,32 @@ function GroupChange({ change }: { change: Extract<GroupEventPayload, { type: 'g
   }
 }
 
-function GroupRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: Extract<GroupEventPayload, { type: 'member_joined' | 'group_updated' }> }) {
+type GroupPayload = Extract<GroupEventPayload, { type: 'member_joined' | 'group_updated' | 'group_closed' | 'group_reopened' }>;
+
+/** «Аня закрыла группу», «Аня открыла группу снова». */
+function StatusRow({ c, e, closed }: { c: RowCtx; e: GroupEventDto; closed: boolean }) {
+  const actor = actorOf(c, e);
+  const head = (
+    <>
+      <strong>{actor.name}</strong> {closed ? `${byGender(actor.gender, 'закрыл', 'закрыла')} группу` : `${byGender(actor.gender, 'открыл', 'открыла')} группу снова`}
+    </>
+  );
+  return (
+    <Row
+      head={head}
+      extra={
+        closed ? (
+          <Link to={`/groups/${c.g.id}/report`} className="feed-row__meta link">
+            Итоговый отчёт
+          </Link>
+        ) : null
+      }
+      time={e.createdAt}
+    />
+  );
+}
+
+function GroupRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: GroupPayload }) {
   if (p.type === 'member_joined') {
     const self = p.userId === c.meId;
     const gender = self ? c.meGender : (memberOf(c.g, p.userId)?.gender ?? null);
@@ -276,6 +301,7 @@ function GroupRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: Extract<GroupEv
     );
     return <Row head={head} time={e.createdAt} />;
   }
+  if (p.type !== 'group_updated') return <StatusRow c={c} e={e} closed={p.type === 'group_closed'} />;
   const actor = actorOf(c, e);
   const only = p.changes.length === 1 ? p.changes[0] : undefined;
   const what = only?.field === 'name' ? byGender(actor.gender, 'переименовал', 'переименовала') + ' группу' : byGender(actor.gender, 'изменил', 'изменила') + ' настройки группы';

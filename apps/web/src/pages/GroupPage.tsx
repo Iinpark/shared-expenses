@@ -2,6 +2,7 @@ import { byGender, canEditExpense, currencySymbol, naiveTransferCount, type Bala
 import { useCallback, useState, type ReactNode } from 'react';
 import { Link, NavLink, useParams } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
+import { ClosedBanner } from '../components/ClosedBanner.js';
 import { Icon } from '../components/Icon.js';
 import { useToast } from '../components/Toast.js';
 import { copy, fill } from '../lib/copy.js';
@@ -9,7 +10,7 @@ import { CATEGORY_LABELS, countGenitive, inviteLink, money, moneyCur, shortDate,
 import { clock } from '../lib/events.js';
 import { ApiError, useBalances, useCurrentUser, useExpenses, useGroup, useRealtimeStatus, useSettlements } from '../lib/queries/index.js';
 import { allowedTo, pendingFrom } from '../lib/settlements.js';
-import { dayMonth, joinNames, plural } from '../lib/ru.js';
+import { joinNames, plural } from '../lib/ru.js';
 import { markKey, useChangeMarks, type Marks } from './group/changes.js';
 import { FeedPanel } from './group/Feed.js';
 import { hasOutgoingPending, SettlementCards } from './group/SettlementCards.js';
@@ -51,7 +52,7 @@ function GroupView({ tab, data }: { tab: Tab; data: Omit<Ctx, 'marks' | 'onMark'
   return (
     <div className={`page${online ? '' : ' is-stale'}`}>
       <GroupHeader g={g} isOwner={g.ownerId === ctx.meId} tab={tab} />
-      {!open && <ClosedBanner g={g} />}
+      {!open && <ClosedBanner g={g} isOwner={g.ownerId === ctx.meId} reportLink />}
       {!online && <OfflineBanner freshAt={freshAt} />}
       {open && (
         <div className="group-body desktop-only add-row">
@@ -59,12 +60,16 @@ function GroupView({ tab, data }: { tab: Tab; data: Omit<Ctx, 'marks' | 'onMark'
         </div>
       )}
       <GroupContent tab={tab} ctx={ctx} />
-      {marking && <SettleSheet g={g} meId={ctx.meId} balances={ctx.balances} settlements={ctx.settlements} request={marking} onClose={closeMark} />}
-      {open && (
-        <div className="add-bar mobile-only">
+      {marking && open && <SettleSheet g={g} meId={ctx.meId} balances={ctx.balances} settlements={ctx.settlements} request={marking} onClose={closeMark} />}
+      <div className="add-bar mobile-only">
+        {open ? (
           <AddButton g={g} online={online} main />
-        </div>
-      )}
+        ) : (
+          <Link to={`/groups/${g.id}/report`} className="btn btn--outline btn--main">
+            Итоговый отчёт
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
@@ -142,15 +147,6 @@ function GroupHeader({ g, isOwner, tab }: { g: GroupDto; isOwner: boolean; tab: 
         </nav>
       </div>
     </header>
-  );
-}
-
-function ClosedBanner({ g }: { g: GroupDto }) {
-  return (
-    <div className="banner">
-      <Icon name="lock" size={18} />
-      {fill(copy.group.closedBanner, { date: g.closedAt ? dayMonth(g.closedAt) : '' })}
-    </div>
   );
 }
 

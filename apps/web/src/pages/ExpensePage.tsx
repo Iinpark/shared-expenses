@@ -22,14 +22,24 @@ export function ExpensePage() {
   const notFound = (e: unknown) => e instanceof ApiError && e.status === 404;
   if (notFound(group.error) || notFound(existing.error)) return <NotFoundPage />;
   if (!group.data || (expenseId && !existing.data)) return <p className="hint" style={{ padding: 20 }}>Загружаем…</p>;
-  const blocked = readOnlyReason(group.data, existing.data, me.id);
-  if (blocked) return <ReadOnly groupId={id} text={blocked} />;
-  return <ExpenseForm key={existing.data?.id ?? 'new'} group={group.data} expense={existing.data} />;
+  return <Editor key={existing.data?.id ?? 'new'} g={group.data} expense={existing.data} meId={me.id} />;
+}
+
+/**
+ * Форма или объяснение, почему её нет. Форму, которую уже начали заполнять, не убираем, если группу закрыли:
+ * над ней появится объяснение, а набранное останется (новый расход — и в черновике на телефоне).
+ */
+function Editor({ g, expense, meId }: { g: GroupDto; expense: ExpenseDto | undefined; meId: string }) {
+  const [formShown, setFormShown] = useState(false);
+  const blocked = readOnlyReason(g, expense, meId, formShown);
+  if (blocked) return <ReadOnly groupId={g.id} text={blocked} />;
+  if (!formShown) setFormShown(true);
+  return <ExpenseForm group={g} expense={expense} />;
 }
 
 /** Почему форму не показываем: группа закрыта или расход чужой (править может плативший, автор или создатель группы). */
-function readOnlyReason(g: GroupDto, expense: ExpenseDto | undefined, meId: string): string | null {
-  if (g.status === 'closed') return 'Группа закрыта, расходы не изменить.';
+function readOnlyReason(g: GroupDto, expense: ExpenseDto | undefined, meId: string, formShown: boolean): string | null {
+  if (g.status === 'closed' && !formShown) return 'Группа закрыта, расходы не изменить.';
   if (expense && !canEditExpense(expense, meId, g.ownerId)) return 'Изменить расход может тот, кто платил, кто его внёс, или создатель группы.';
   return null;
 }
@@ -51,7 +61,7 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
   const d = useExpenseDraft(g, expense, me.id);
   const m = useExpenseMutations(g, expense);
   const notice = useFormNotice(g, me.id, expense?.id);
-  const canSave = !!d.shares && !d.exactBad && !m.busy;
+  const canSave = isSavable(g, d, m.busy);
   const save = (version?: number) => {
     if (d.total !== null) void m.save(d.input(d.total), version);
   };
@@ -85,6 +95,8 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
     </div>
   );
 }
+
+const isSavable = (g: GroupDto, d: Draft, busy: boolean) => g.status === 'open' && !!d.shares && !d.exactBad && !busy;
 
 function FormHeader({ g, editing }: { g: GroupDto; editing: boolean }) {
   return (
@@ -294,7 +306,7 @@ function FormFoot(p: FootProps) {
           {copy.expense.exactBlocked}
         </p>
       )}
-      {p.editing && <DeleteControl busy={m.busy} onDelete={() => void m.remove()} />}
+      {p.editing && p.g.status === 'open' && <DeleteControl busy={m.busy} onDelete={() => void m.remove()} />}
     </div>
   );
 }

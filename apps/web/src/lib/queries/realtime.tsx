@@ -1,6 +1,7 @@
 import { SSE_EVENTS, type GroupEventDto } from '@se/shared';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useEffectEvent, useState, type ReactNode } from 'react';
+import { isExpenseEvent, latest } from '../events.js';
 import { useMe } from './auth.js';
 import { invalidateGroup, qk } from './keys.js';
 
@@ -31,21 +32,7 @@ const ListenersContext = createContext<Set<Listener>>(new Set());
 /** Расход, которого касается событие (если касается). */
 function expenseIdOf(event: GroupEventDto): string | null {
   const p = event.payload;
-  switch (p.type) {
-    case 'expense_created':
-      return p.after.id;
-    case 'expense_updated':
-      return p.after.id;
-    case 'expense_deleted':
-      return p.before.id;
-    case 'member_joined':
-    case 'group_updated':
-    case 'settlement_created':
-    case 'settlement_confirmed':
-    case 'settlement_rejected':
-    case 'settlement_cancelled':
-      return null;
-  }
+  return isExpenseEvent(p) ? latest(p).id : null;
 }
 
 /**

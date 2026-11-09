@@ -111,7 +111,7 @@ function IncomingCard({ c, s }: { c: SettleCtx; s: SettlementDto }) {
           </button>
         </div>
       )}
-      {asking && (
+      {asking && c.g.status === 'open' && (
         <>
           <p className="settle-card__sub">{fill(copy.settlement.rejectHint, { name: from })}</p>
           <div className="settle-card__btns">

@@ -2,6 +2,7 @@ import type { CurrencyCode, GroupDto, Me } from '@se/shared';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
+import { ClosedBanner } from '../components/ClosedBanner.js';
 import { CurrencyPicker, currencyLabel } from '../components/CurrencyPicker.js';
 import { EmailChips } from '../components/EmailChips.js';
 import { Icon } from '../components/Icon.js';
@@ -9,6 +10,7 @@ import { useToast } from '../components/Toast.js';
 import { copy } from '../lib/copy.js';
 import { inviteLink } from '../lib/format.js';
 import { ApiError, errorText, useCurrentUser, useGroup, useInviteByEmail, useRotateInviteLink, useUpdateGroup } from '../lib/queries/index.js';
+import { ClosePanel } from './settings/ClosePanel.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
 /** D04: настройки группы. Менять может только создатель, остальные видят участников и могут позвать людей. */
@@ -20,12 +22,17 @@ export function SettingsPage() {
   if (group.error instanceof ApiError && group.error.status === 404) return <NotFoundPage />;
   if (!group.data) return <p className="hint" style={{ padding: 20 }}>Загружаем…</p>;
   const g = group.data;
-  const isOwner = g.ownerId === me.id;
+  return <SettingsView g={g} me={me} />;
+}
 
+function SettingsView({ g, me }: { g: GroupDto; me: Me }) {
+  const isOwner = g.ownerId === me.id;
+  const canClose = isOwner && g.status === 'open';
+  const [closing, setClosing] = useState(false);
   return (
     <div className="page">
       <header className="appbar">
-        <div className="container appbar__inner" style={{ justifyContent: 'flex-start', maxWidth: 720, padding: '0 20px' }}>
+        <div className="container appbar__inner settings-bar">
           <Link to={`/groups/${g.id}`} style={{ height: 44, display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 500 }}>
             <Icon name="back" />
             {g.name}
@@ -33,17 +40,58 @@ export function SettingsPage() {
         </div>
       </header>
 
-      <main className="container" style={{ padding: '32px 20px 64px', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 32 }}>
-        <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-.02em' }}>{isOwner ? 'Настройки группы' : 'О группе'}</h1>
-        {isOwner && g.status === 'open' ? (
-          // Ключ из сохранённых значений: после сохранения форма начинается заново с новыми данными.
-          <SettingsForm key={`${g.id}:${g.name}:${g.currency}:${String(g.reminderDays)}`} group={g} />
-        ) : (
-          <GroupInfo group={g} />
+      {g.status === 'closed' && <ClosedBanner g={g} isOwner={isOwner} reportLink />}
+      <main className="container settings">
+        <div className="settings__main">
+          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-.02em' }}>{isOwner ? 'Настройки группы' : 'О группе'}</h1>
+          {isOwner && g.status === 'open' ? (
+            // Ключ из сохранённых значений: после сохранения форма начинается заново с новыми данными.
+            <SettingsForm key={`${g.id}:${g.name}:${g.currency}:${String(g.reminderDays)}`} group={g} />
+          ) : (
+            <GroupInfo group={g} />
+          )}
+          <MembersSection group={g} me={me} isOwner={isOwner} />
+          {canClose && !closing && (
+            <CloseEntry
+              onOpen={() => {
+                setClosing(true);
+              }}
+            />
+          )}
+        </div>
+        {canClose && closing && (
+          <ClosePanel
+            g={g}
+            meId={me.id}
+            onCancel={() => {
+              setClosing(false);
+            }}
+          />
         )}
-        <MembersSection group={g} me={me} isOwner={isOwner} />
       </main>
     </div>
+  );
+}
+
+/**
+ * «Закрыть группу» для создателя. Подтверждение (D04) — панель справа на компьютере,
+ * на телефоне — блок под списком участников, туда же и прокручиваем.
+ */
+function CloseEntry({ onOpen }: { onOpen: () => void }) {
+  return (
+    <section className="settings__close">
+      <h2 style={{ fontSize: 20, fontWeight: 600 }}>Закрыть группу</h2>
+      <p className="hint">Когда всё закончилось: всем уйдёт письмо с итогом, а расходы и погашения больше не добавить. Открыть снова можно в любой момент.</p>
+      <button
+        type="button"
+        className="btn"
+        style={{ alignSelf: 'flex-start' }}
+        onClick={onOpen}
+      >
+        <Icon name="lock" size={18} />
+        Закрыть группу
+      </button>
+    </section>
   );
 }
 

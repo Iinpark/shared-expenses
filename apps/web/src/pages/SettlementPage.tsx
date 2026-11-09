@@ -176,6 +176,7 @@ function Actions({ c }: { c: Ctx }) {
           {copy.settlement.cancelMark}
         </button>
       )}
+      {g.status === 'closed' && s.status === 'pending' && <p className="hint-sm settle-page__hint">Группа закрыта. Подтвердить или отменить перевод можно, когда её откроют снова.</p>}
       {!open && (
         <Link to={`/groups/${g.id}`} className="btn btn--main">
           К группе

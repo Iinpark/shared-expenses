@@ -75,26 +75,45 @@ function settlementToast(event: GroupEventDto, p: SettlementPayload, g: GroupDto
   }
 }
 
-/** Тост для события: о расходе с твоим участием или о погашении, где ты отдаёшь или получаешь. */
+/** Создатель закрыл группу или открыл снова: это касается всех участников. */
+function statusToast(event: GroupEventDto, g: GroupDto, closed: boolean): ToastContent {
+  const gender = actorGender(g, event);
+  if (closed) {
+    return {
+      text: `${event.actorName} ${byGender(gender, 'закрыл', 'закрыла')} группу «${g.name}»`,
+      sub: 'Итог пришёл письмом.',
+      action: { label: 'Отчёт', to: `/groups/${g.id}/report` },
+    };
+  }
+  return {
+    text: `${event.actorName} ${byGender(gender, 'открыл', 'открыла')} группу «${g.name}» снова`,
+    sub: 'Расходы и погашения снова можно добавлять.',
+    action: { label: 'Посмотреть', to: `/groups/${g.id}` },
+  };
+}
+
+/** Тост для события: о расходе с твоим участием, о погашении, где ты отдаёшь или получаешь, о закрытии группы. */
 function toastFor(event: GroupEventDto, g: GroupDto, meId: string): ToastContent | null {
   const p = event.payload;
   if (isExpenseEvent(p)) return involves(p, meId) ? liveToast(event, p, g, meId) : null;
   if (isSettlementEvent(p)) return settlementToast(event, p, g, meId);
+  if (p.type === 'group_closed' || p.type === 'group_reopened') return statusToast(event, g, p.type === 'group_closed');
   return null;
 }
+
+const toastable = (p: GroupEventDto['payload']) => isExpenseEvent(p) || isSettlementEvent(p) || p.type === 'group_closed' || p.type === 'group_reopened';
 
 /**
  * LiveToast на любом экране: о чужих расходах, в которых ты платил или участвуешь
  * (ТЗ: «участник получает уведомление, когда появился расход с его участием или такой расход отредактировали»),
- * и о чужих действиях с погашениями, где ты отдаёшь или получаешь.
+ * о чужих действиях с погашениями, где ты отдаёшь или получаешь, и о закрытии или открытии группы.
  */
 export function LiveToastListener() {
   const me = useCurrentUser();
   const toast = useToast();
   const lookup = useGroupLookup();
   useGroupEventListener((event) => {
-    const p = event.payload;
-    if (event.actorId === me.id || !(isExpenseEvent(p) || isSettlementEvent(p))) return;
+    if (event.actorId === me.id || !toastable(event.payload)) return;
     lookup(event.groupId).then(
       (g) => {
         const content = toastFor(event, g, me.id);
