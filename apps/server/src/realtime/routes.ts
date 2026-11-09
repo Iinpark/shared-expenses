@@ -22,7 +22,10 @@ const frame = (event: GroupEventDto) => `id: ${event.id}\nevent: group_event\nda
 export function realtimeRoutes(app: FastifyInstance, hub: RealtimeHub): Promise<void> {
   app.get('/api/events/stream', async (req, reply) => {
     const user = requireProfile(req);
-    const since = lastEventId.parse(req.headers['last-event-id']);
+    // Сам EventSource при переподключении шлёт заголовок; новый EventSource (клиент открыл поток
+    // заново после потери сети) заголовок задать не может и передаёт id в адресе.
+    const query = req.query as { lastEventId?: unknown };
+    const since = lastEventId.parse(req.headers['last-event-id'] ?? query.lastEventId);
 
     reply.hijack();
     const res = reply.raw;

@@ -18,12 +18,16 @@ const req = (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', cookie: Cookie
 const feedOf = (res: { json: () => unknown }) => res.json() as GroupEventsPage;
 
 /** Подписка на поток SSE, которая разбирает кадры и складывает их. */
-async function connect(cookie: Cookie | null, lastEventId?: string) {
+function connect(cookie: Cookie | null, lastEventId?: string) {
+  return connectUrl(cookie, '/api/events/stream', lastEventId);
+}
+
+async function connectUrl(cookie: Cookie | null, path: string, lastEventId?: string) {
   const frames: { event: string; id: string | null; data: string }[] = [];
   const abort = new AbortController();
   const headers: Record<string, string> = cookie ? { cookie } : {};
   if (lastEventId) headers['last-event-id'] = lastEventId;
-  const res = await fetch(`${base}/api/events/stream`, { headers, signal: abort.signal });
+  const res = await fetch(`${base}${path}`, { headers, signal: abort.signal });
   if (res.ok && res.body) {
     const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
     let tail = '';
@@ -171,6 +175,21 @@ describe('живые обновления (SSE)', () => {
     await until(() => again.has('ready'));
     const amounts = again.events().map((e) => (e.payload.type === 'expense_created' ? e.payload.after.amount : null));
     expect(amounts).toEqual([2000, 3000]);
+    again.close();
+  });
+
+  it('id последнего события можно передать и в адресе (новый поток после потери сети)', async () => {
+    const { anya, boris, groupId, taxi } = await setup();
+    const first = await connect(anya);
+    await req('POST', boris, `/api/groups/${groupId}/expenses`, taxi(1000));
+    await until(() => first.events().length === 1);
+    const lastSeen = must(first.events()[0]).id;
+    first.close();
+    await req('POST', boris, `/api/groups/${groupId}/expenses`, taxi(2000));
+
+    const again = await connectUrl(anya, `/api/events/stream?lastEventId=${lastSeen}`);
+    await until(() => again.has('ready'));
+    expect(again.events()).toHaveLength(1);
     again.close();
   });
 

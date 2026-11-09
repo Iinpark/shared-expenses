@@ -7,7 +7,8 @@ import { CATEGORY_LABELS, money, moneyCur, today } from '../lib/format.js';
 import { ApiError, useBalances, useCurrentUser, useExpense, useGroup } from '../lib/queries/index.js';
 import { useExpenseDraft, type Draft } from './expense/draft.js';
 import { useExpenseMutations, type Mutations } from './expense/mutations.js';
-import { ConflictNotice, EditPreview } from './expense/Notices.js';
+import { clearDraft } from './expense/draftStore.js';
+import { ConflictSheet, EditPreview, FormNotice, useFormNotice, type VersionView } from './expense/Notices.js';
 import { SplitSection } from './expense/SplitSection.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
@@ -49,6 +50,7 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
   const balances = useBalances(g.id);
   const d = useExpenseDraft(g, expense, me.id);
   const m = useExpenseMutations(g, expense);
+  const notice = useFormNotice(g, me.id, expense?.id);
   const canSave = !!d.shares && !d.exactBad && !m.busy;
   const save = (version?: number) => {
     if (d.total !== null) void m.save(d.input(d.total), version);
@@ -57,6 +59,7 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
   return (
     <div className="expense-form">
       <FormHeader g={g} editing={!!expense} />
+      {notice && <FormNotice text={notice} />}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -86,7 +89,15 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
 function FormHeader({ g, editing }: { g: GroupDto; editing: boolean }) {
   return (
     <header className="sheet-head">
-      <Link to={`/groups/${g.id}`} aria-label="Закрыть" className="icon-btn">
+      <Link
+        to={`/groups/${g.id}`}
+        aria-label="Закрыть"
+        className="icon-btn"
+        onClick={() => {
+          // Закрыть крестиком — значит передумать: черновик нового расхода больше не нужен.
+          if (!editing) clearDraft(g.id);
+        }}
+      >
         <Icon name="close" size={24} />
       </Link>
       <div className="sheet-head__title" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
@@ -228,17 +239,52 @@ function submitLabel(editing: boolean, total: number | null, currency: CurrencyC
   return total ? fill(copy.expense.save, { amount: moneyCur(total, currency) }) : 'Сохранить';
 }
 
-function FormFoot(p: { g: GroupDto; d: Draft; m: Mutations; editing: boolean; canSave: boolean; meId: string; onSave: (version?: number) => void }) {
-  const { d, m } = p;
+/** Несохранённая форма как версия расхода для ConflictSheet. */
+function mineVersion(d: Draft): VersionView | null {
+  if (d.total === null) return null;
+  const input = d.input(d.total);
+  return { title: input.title ?? '', amount: d.total, payerId: d.payerId, shareIds: (d.shares ?? []).map((s) => s.userId), spentOn: d.spentOn };
+}
+
+interface FootProps {
+  g: GroupDto;
+  d: Draft;
+  m: Mutations;
+  editing: boolean;
+  canSave: boolean;
+  meId: string;
+  onSave: (version?: number) => void;
+}
+
+/** ConflictSheet поверх формы, если сохранение или удаление вернуло 409. */
+function FormConflict({ g, d, m, meId, onSave }: FootProps) {
   const conflict = m.conflict;
+  if (!conflict) return null;
   const overwrite = () => {
-    if (!conflict?.current) return;
+    if (!conflict.current) return;
     if (conflict.action === 'delete') void m.remove(conflict.current.version);
-    else p.onSave(conflict.current.version);
+    else onSave(conflict.current.version);
   };
   return (
+    <ConflictSheet
+      g={g}
+      current={conflict.current}
+      meId={meId}
+      meGender={g.members.find((x) => x.userId === meId)?.gender ?? null}
+      busy={m.busy}
+      action={conflict.action}
+      mine={conflict.action === 'delete' ? null : mineVersion(d)}
+      onApply={overwrite}
+    />
+  );
+}
+
+function FormFoot(p: FootProps) {
+  const { d, m } = p;
+  const conflict = m.conflict;
+  return (
     <div className="form-foot">
-      {conflict && <ConflictNotice g={p.g} current={conflict.current} meId={p.meId} busy={m.busy} action={conflict.action} onOverwrite={overwrite} />}
+      <FormConflict {...p} />
       {m.error && <p className="form-error">{m.error}</p>}
       <button type="submit" className="btn btn--primary btn--main" disabled={!p.canSave || !!conflict}>
         {submitLabel(p.editing, d.total, d.currency)}

@@ -2,6 +2,7 @@ import type { ExpenseDto, ExpenseInput, GroupDto } from '@se/shared';
 import { useNavigate } from 'react-router';
 import { useToast } from '../../components/Toast.js';
 import { useExpenseEditor } from '../../lib/queries/index.js';
+import { clearDraft } from './draftStore.js';
 
 /** Сохранение и удаление расхода из формы: запросы и конфликты версий — в слое запросов, здесь тост и переход. */
 export function useExpenseMutations(g: GroupDto, expense: ExpenseDto | undefined) {
@@ -11,6 +12,7 @@ export function useExpenseMutations(g: GroupDto, expense: ExpenseDto | undefined
 
   async function finish(ok: boolean, done: string) {
     if (!ok) return;
+    if (!expense) clearDraft(g.id);
     toast(done);
     await navigate(`/groups/${g.id}`);
   }
