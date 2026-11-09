@@ -9,7 +9,7 @@ import { api } from '../lib/api.js';
 import { copy } from '../lib/copy.js';
 import { money, moneyCur } from '../lib/expenses.js';
 import { dayMonth, members } from '../lib/ru.js';
-import { useMe } from '../lib/session.js';
+import { useCurrentUser } from '../lib/session.js';
 
 const symbol = (c: string) => {
   try {
@@ -56,7 +56,7 @@ function Totals({ list }: { list: GroupSummaryDto[] }) {
 
 /** M01 / D01: список групп с балансом в каждой и общим итогом по валютам. */
 export function GroupsPage() {
-  const me = useMe().data!;
+  const me = useCurrentUser();
   const groups = useQuery({ queryKey: ['groups'], queryFn: () => api<GroupSummaryDto[]>('GET', '/api/groups') });
   const list = groups.data ?? [];
   const open = list.filter((g) => g.status === 'open');

@@ -1,6 +1,6 @@
 import type { CurrencyCode, GroupDto } from '@se/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useState, type SyntheticEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
 import { CurrencyPicker } from '../components/CurrencyPicker.js';
@@ -9,11 +9,11 @@ import { Icon } from '../components/Icon.js';
 import { api, errorText } from '../lib/api.js';
 import { copy, fill } from '../lib/copy.js';
 import { peopleCount } from '../lib/ru.js';
-import { useMe } from '../lib/session.js';
+import { useCurrentUser } from '../lib/session.js';
 
 /** M09: создание группы и приглашение. */
 export function CreateGroupPage() {
-  const me = useMe().data!;
+  const me = useCurrentUser();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [name, setName] = useState('');
@@ -26,7 +26,7 @@ export function CreateGroupPage() {
   const reminderDays = Number(days);
   const daysValid = Number.isInteger(reminderDays) && reminderDays >= 1 && reminderDays <= 90;
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SyntheticEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
@@ -34,7 +34,7 @@ export function CreateGroupPage() {
       const group = await api<GroupDto>('POST', '/api/groups', { name, currency, reminderDays, inviteEmails: emails });
       qc.setQueryData(['group', group.id], group);
       await qc.invalidateQueries({ queryKey: ['groups'] });
-      navigate(`/groups/${group.id}`, { replace: true });
+      await navigate(`/groups/${group.id}`, { replace: true });
     } catch (err) {
       setError(errorText(err));
       setBusy(false);
@@ -42,7 +42,7 @@ export function CreateGroupPage() {
   }
 
   return (
-    <form className="page page--white form-page" onSubmit={submit}>
+    <form className="page page--white form-page" onSubmit={(e) => void submit(e)}>
       <header className="sheet-head">
         <Link to="/" aria-label="Закрыть" className="icon-btn">
           <Icon name="close" size={22} />
@@ -55,7 +55,10 @@ export function CreateGroupPage() {
           <label htmlFor="name" className="field__label">
             {copy.group.name}
           </label>
-          <input id="name" className="input" style={{ fontSize: 18, fontWeight: 500 }} autoFocus maxLength={60} placeholder="Поездка в Казань" value={name} onChange={(e) => setName(e.target.value)} />
+          <input id="name" className="input" style={{ fontSize: 18, fontWeight: 500 }} autoFocus maxLength={60} placeholder="Поездка в Казань" value={name} onChange={(e) => {
+              setName(e.target.value);
+            }}
+          />
         </div>
         <CurrencyPicker value={currency} onChange={setCurrency} />
         <div className="inline-field">
@@ -63,7 +66,10 @@ export function CreateGroupPage() {
             {copy.group.reminder}
           </label>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input id="days" className="input input--days n" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, '').slice(0, 2))} />
+            <input id="days" className="input input--days n" inputMode="numeric" value={days} onChange={(e) => {
+                setDays(e.target.value.replace(/\D/g, '').slice(0, 2));
+              }}
+            />
             <span>{copy.group.days}</span>
           </span>
         </div>
@@ -87,7 +93,7 @@ export function CreateGroupPage() {
         </div>
         <div style={{ borderTop: '1px solid var(--line-soft)' }}>
           <div className="row" style={{ padding: '10px 0' }}>
-            <Avatar name={me.name!} />
+            <Avatar name={me.name ?? me.email} />
             <span style={{ flex: 1, fontSize: 15 }}>{me.name} (ты)</span>
             <span className="hint">создатель</span>
           </div>

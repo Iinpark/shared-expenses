@@ -1,5 +1,5 @@
 import type { Gender, Me } from '@se/shared';
-import { useState, type FormEvent } from 'react';
+import { useState, type ReactNode, type SyntheticEvent } from 'react';
 import { api, errorText } from '../lib/api.js';
 import { useMe, useSetMe } from '../lib/session.js';
 
@@ -33,7 +33,7 @@ export function AuthFlow({ submitLabel = 'Получить код', onDone }: { 
     }
   }
 
-  const sendCode = (e?: FormEvent) => {
+  const sendCode = (e?: SyntheticEvent) => {
     e?.preventDefault();
     return run(async () => {
       await api('POST', '/api/auth/request-code', { email });
@@ -42,7 +42,7 @@ export function AuthFlow({ submitLabel = 'Получить код', onDone }: { 
     });
   };
 
-  const verify = (e: FormEvent) => {
+  const verify = (e: SyntheticEvent) => {
     e.preventDefault();
     return run(async () => {
       const user = await api<Me>('POST', '/api/auth/verify', { email, code });
@@ -52,7 +52,7 @@ export function AuthFlow({ submitLabel = 'Получить код', onDone }: { 
     });
   };
 
-  const saveProfile = (e: FormEvent) => {
+  const saveProfile = (e: SyntheticEvent) => {
     e.preventDefault();
     return run(async () => {
       const user = await api<Me>('PATCH', '/api/me', { name, gender });
@@ -63,87 +63,158 @@ export function AuthFlow({ submitLabel = 'Получить код', onDone }: { 
 
   if (step === 'email') {
     return (
-      <form className="field" style={{ gap: 10 }} onSubmit={sendCode}>
-        <label htmlFor="email" className="field__label--strong">
-          Твоя почта
-        </label>
-        <input
-          id="email"
-          className="input"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          autoFocus
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        {error && <p className="field-error">{error}</p>}
-        <button className="btn btn--primary btn--main" disabled={busy || !email}>
-          {submitLabel}
-        </button>
-        <p className="hint">Пришлём код из 6 цифр. Пароль не нужен. Уже есть аккаунт с этой почтой? Код просто войдёт в него.</p>
-      </form>
+      <EmailStep email={email} setEmail={setEmail} busy={busy} error={error} submitLabel={submitLabel} onSubmit={(e) => void sendCode(e)} />
     );
   }
 
   if (step === 'code') {
     return (
-      <form className="field" style={{ gap: 10 }} onSubmit={verify}>
-        <label htmlFor="code" className="field__label--strong">
-          Код из письма на {email}
-        </label>
-        <input
-          id="code"
-          className="input input--code n"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          autoFocus
-          maxLength={6}
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-        />
-        {error && <p className="field-error">{error}</p>}
-        <button className="btn btn--primary btn--main" disabled={busy || code.length !== 6}>
-          Войти
-        </button>
-        <p className="hint">
-          Не пришло?{' '}
-          <button
-            type="button"
-            className="link"
-            disabled={busy}
-            onClick={async () => {
-              await sendCode();
-              setResent(true);
-            }}
-          >
-            {resent ? 'Отправили ещё раз' : 'Прислать ещё раз'}
-          </button>{' '}
-          ·{' '}
-          <button type="button" className="link" onClick={() => setStep('email')}>
-            Другая почта
-          </button>
-        </p>
-        {import.meta.env.DEV && (
-          <p className="hint-sm">
-            Локально письма не уходят наружу: код лежит в Mailpit,{' '}
-            <a className="link" href="http://localhost:8025" target="_blank" rel="noreferrer">
-              localhost:8025
-            </a>
-          </p>
-        )}
-      </form>
+      <CodeStep
+        email={email}
+        code={code}
+        setCode={setCode}
+        busy={busy}
+        error={error}
+        resent={resent}
+        onSubmit={(e) => void verify(e)}
+        onResend={() =>
+          void sendCode().then(() => {
+            setResent(true);
+          })
+        }
+        onOtherEmail={() => {
+          setStep('email');
+        }}
+      />
     );
   }
 
+  return <ProfileStep name={name} setName={setName} gender={gender} setGender={setGender} busy={busy} error={error} onSubmit={(e) => void saveProfile(e)} />;
+}
+
+type Submit = (e: SyntheticEvent) => void;
+
+const ErrorText = ({ error }: { error: string | null }) => (error ? <p className="field-error">{error}</p> : null);
+
+function EmailStep(p: { email: string; setEmail: (v: string) => void; busy: boolean; error: string | null; submitLabel: string; onSubmit: Submit }) {
   return (
-    <form className="field" style={{ gap: 16 }} onSubmit={saveProfile}>
+    <form className="field" style={{ gap: 10 }} onSubmit={p.onSubmit}>
+      <label htmlFor="email" className="field__label--strong">
+        Твоя почта
+      </label>
+      <input
+        id="email"
+        className="input"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        autoFocus
+        required
+        value={p.email}
+        onChange={(e) => {
+          p.setEmail(e.target.value);
+        }}
+      />
+      <ErrorText error={p.error} />
+      <button className="btn btn--primary btn--main" disabled={p.busy || !p.email}>
+        {p.submitLabel}
+      </button>
+      <p className="hint">Пришлём код из 6 цифр. Пароль не нужен. Уже есть аккаунт с этой почтой? Код просто войдёт в него.</p>
+    </form>
+  );
+}
+
+function CodeStep(p: {
+  email: string;
+  code: string;
+  setCode: (v: string) => void;
+  busy: boolean;
+  error: string | null;
+  resent: boolean;
+  onSubmit: Submit;
+  onResend: () => void;
+  onOtherEmail: () => void;
+}) {
+  return (
+    <form className="field" style={{ gap: 10 }} onSubmit={p.onSubmit}>
+      <label htmlFor="code" className="field__label--strong">
+        Код из письма на {p.email}
+      </label>
+      <input
+        id="code"
+        className="input input--code n"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        autoFocus
+        maxLength={6}
+        value={p.code}
+        onChange={(e) => {
+          p.setCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+        }}
+      />
+      <ErrorText error={p.error} />
+      <button className="btn btn--primary btn--main" disabled={p.busy || p.code.length !== 6}>
+        Войти
+      </button>
+      <p className="hint">
+        Не пришло?{' '}
+        <button type="button" className="link" disabled={p.busy} onClick={p.onResend}>
+          {p.resent ? 'Отправили ещё раз' : 'Прислать ещё раз'}
+        </button>{' '}
+        ·{' '}
+        <button type="button" className="link" onClick={p.onOtherEmail}>
+          Другая почта
+        </button>
+      </p>
+      <MailpitHint />
+    </form>
+  );
+}
+
+function MailpitHint(): ReactNode {
+  if (!import.meta.env.DEV) return null;
+  return (
+    <p className="hint-sm">
+      Локально письма не уходят наружу: код лежит в Mailpit,{' '}
+      <a className="link" href="http://localhost:8025" target="_blank" rel="noreferrer">
+        localhost:8025
+      </a>
+    </p>
+  );
+}
+
+const GENDER_OPTIONS = [
+  ['m', 'изменил'],
+  ['f', 'изменила'],
+  [null, 'не важно'],
+] as const;
+
+function ProfileStep(p: {
+  name: string;
+  setName: (v: string) => void;
+  gender: Gender | null;
+  setGender: (v: Gender | null) => void;
+  busy: boolean;
+  error: string | null;
+  onSubmit: Submit;
+}) {
+  return (
+    <form className="field" style={{ gap: 16 }} onSubmit={p.onSubmit}>
       <div className="field">
         <label htmlFor="name" className="field__label--strong">
           Как тебя зовут?
         </label>
-        <input id="name" className="input" autoComplete="given-name" autoFocus maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+        <input
+          id="name"
+          className="input"
+          autoComplete="given-name"
+          autoFocus
+          maxLength={40}
+          value={p.name}
+          onChange={(e) => {
+            p.setName(e.target.value);
+          }}
+        />
         <p className="hint-sm">Так тебя увидят в группе: «Аня заплатила за ужин».</p>
       </div>
       <div className="field">
@@ -151,21 +222,23 @@ export function AuthFlow({ submitLabel = 'Получить код', onDone }: { 
           Как писать о тебе
         </span>
         <div role="radiogroup" aria-labelledby="gender" className="segments">
-          {(
-            [
-              ['m', 'изменил'],
-              ['f', 'изменила'],
-              [null, 'не важно'],
-            ] as const
-          ).map(([value, label]) => (
-            <button key={label} type="button" role="radio" aria-checked={gender === value} onClick={() => setGender(value)}>
+          {GENDER_OPTIONS.map(([value, label]) => (
+            <button
+              key={label}
+              type="button"
+              role="radio"
+              aria-checked={p.gender === value}
+              onClick={() => {
+                p.setGender(value);
+              }}
+            >
               {label}
             </button>
           ))}
         </div>
       </div>
-      {error && <p className="field-error">{error}</p>}
-      <button className="btn btn--primary btn--main" disabled={busy || !name.trim()}>
+      <ErrorText error={p.error} />
+      <button className="btn btn--primary btn--main" disabled={p.busy || !p.name.trim()}>
         Готово
       </button>
     </form>

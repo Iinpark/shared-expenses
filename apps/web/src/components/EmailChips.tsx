@@ -33,7 +33,10 @@ export function EmailChips({ id, value, onChange }: { id: string; value: string[
         {value.map((email) => (
           <span key={email} className="chip">
             {email}
-            <button type="button" aria-label={`Убрать ${email}`} onClick={() => onChange(value.filter((v) => v !== email))}>
+            <button type="button" aria-label={`Убрать ${email}`} onClick={() => {
+                onChange(value.filter((v) => v !== email));
+              }}
+            >
               <Icon name="close" size={14} strokeWidth={2.2} />
             </button>
           </span>
@@ -45,7 +48,9 @@ export function EmailChips({ id, value, onChange }: { id: string; value: string[
           autoComplete="off"
           value={draft}
           placeholder={value.length ? '' : 'boris@example.com'}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+          }}
           onKeyDown={onKeyDown}
           onBlur={commit}
         />

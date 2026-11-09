@@ -1,4 +1,4 @@
-import type { Me } from '@se/shared';
+import { must, type Me } from '@se/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from './api.js';
 
@@ -20,5 +20,12 @@ export function useMe() {
 
 export function useSetMe() {
   const qc = useQueryClient();
-  return (me: Me | null) => qc.setQueryData(['me'], me);
+  return (me: Me | null) => {
+    qc.setQueryData(['me'], me);
+  };
+}
+
+/** Текущий пользователь на страницах внутри RequireUser: там он всегда есть. */
+export function useCurrentUser(): Me {
+  return must(useMe().data, 'вошедший пользователь');
 }

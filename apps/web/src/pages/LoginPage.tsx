@@ -20,7 +20,7 @@ export function LoginPage() {
         <p className="lead">Записывайте общие расходы в поездке или в квартире. Приложение посчитает, кто кому сколько должен, и как рассчитаться меньшим числом переводов.</p>
       </section>
       <div style={{ marginTop: 28 }}>
-        <AuthFlow onDone={() => navigate(next, { replace: true })} />
+        <AuthFlow onDone={() => void navigate(next, { replace: true })} />
       </div>
       <p className="solo__foot">Деньги приложение не переводит: только считает и запоминает.</p>
     </div>

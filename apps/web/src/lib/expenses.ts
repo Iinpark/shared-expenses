@@ -1,4 +1,4 @@
-import { currencySymbol, formatAmount, type BalancesDto, type CurrencyCode, type ExpenseCategory, type ExpenseDto } from '@se/shared';
+import { currencySymbol, formatAmount, must, type BalancesDto, type CurrencyCode, type ExpenseCategory, type ExpenseDto } from '@se/shared';
 import { useQuery, type QueryClient } from '@tanstack/react-query';
 import { api } from './api.js';
 import { copy } from './copy.js';
@@ -19,19 +19,20 @@ export function invalidateGroup(qc: QueryClient, groupId: string) {
   ]);
 }
 
+const [food, transport, housing, fun, other] = copy.expense.categories;
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  food: copy.expense.categories[0]!,
-  transport: copy.expense.categories[1]!,
-  housing: copy.expense.categories[2]!,
-  fun: copy.expense.categories[3]!,
-  other: copy.expense.categories[4]!,
+  food: must(food, 'название категории'),
+  transport: must(transport, 'название категории'),
+  housing: must(housing, 'название категории'),
+  fun: must(fun, 'название категории'),
+  other: must(other, 'название категории'),
 };
 
 /** «1 000,00» в валюте группы. */
 export const money = (minor: number, currency: string, sign = false) => formatAmount(minor, currency as CurrencyCode, { sign });
 
 /** «1 000,00 ₽». */
-export const moneyCur = (minor: number, currency: string) => `${money(minor, currency)} ${currencySymbol(currency as CurrencyCode)}`;
+export const moneyCur = (minor: number, currency: string) => `${money(minor, currency)}\u00a0${currencySymbol(currency as CurrencyCode)}`;
 
 /** Сегодняшняя дата в формате YYYY-MM-DD по часам пользователя. */
 export function today(): string {
@@ -44,10 +45,10 @@ const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'и�
 export function shortDate(iso: string): string {
   if (iso.length > 10) {
     const d = new Date(iso);
-    return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    return `${String(d.getDate())} ${MONTHS[d.getMonth()] ?? ''}`;
   }
   const [, m, d] = iso.split('-').map(Number);
-  return `${d} ${MONTHS[m! - 1]}`;
+  return `${String(d)} ${MONTHS[must(m, 'месяц') - 1] ?? ''}`;
 }
 
 /** Описание деления для таблицы: «поровну на троих», «долями 1 : 1 : 1 : 2», «точными суммами». */
