@@ -3,6 +3,7 @@ import {
   computeBalances,
   computeShares,
   expenseEffect,
+  must,
   minimalTransfers,
   naiveTransferCount,
   type Balance,
@@ -64,7 +65,7 @@ describe('деление поровну', () => {
 
 describe('деление долями', () => {
   it('2 000,00 при 1:1:1:2 → 400 · 400 · 400 · 800', () => {
-    expect(amounts(computeShares(200_000, KAZAN_EXPENSES[3]!.split, kazanOrder))).toEqual([40_000, 40_000, 40_000, 80_000]);
+    expect(amounts(computeShares(200_000, must(KAZAN_EXPENSES[3]).split, kazanOrder))).toEqual([40_000, 40_000, 40_000, 80_000]);
   });
 
   it('копейки от округления — по порядку вступления', () => {
@@ -89,7 +90,7 @@ describe('деление долями', () => {
 
 describe('деление точными суммами', () => {
   it('принимает суммы, которые сходятся до копейки', () => {
-    expect(amounts(computeShares(465_000, KAZAN_EXPENSES[2]!.split, kazanOrder))).toEqual([120_000, 150_000, 95_000, 100_000]);
+    expect(amounts(computeShares(465_000, must(KAZAN_EXPENSES[2]).split, kazanOrder))).toEqual([120_000, 150_000, 95_000, 100_000]);
   });
 
   it('не принимает, если не хватает 150,00', () => {
@@ -126,7 +127,7 @@ describe('контрольный пример «Поездка в Казань»
     });
 
   it('такси 1 000,00 на троих: Борис 333,34, Вика и Гена по 333,33', () => {
-    expect(amounts(ledger()[1]!.shares)).toEqual([33_334, 33_333, 33_333]);
+    expect(amounts(must(ledger()[1]).shares)).toEqual([33_334, 33_333, 33_333]);
   });
 
   it('балансы после четырёх расходов', () => {
@@ -153,11 +154,11 @@ describe('контрольный пример «Поездка в Казань»
 
   it('превью правки: текущие балансы − старый расход + новый = пересчёт с нуля', () => {
     const before = computeBalances([...KAZAN_MEMBERS], ledger());
-    const oldTaxi = ledger()[1]!;
-    const newTaxi = ledger(KAZAN_TAXI_FIXED_AMOUNT)[1]!;
+    const oldTaxi = must(ledger()[1]);
+    const newTaxi = must(ledger(KAZAN_TAXI_FIXED_AMOUNT)[1]);
     const preview = new Map(before.map((b) => [b.userId, b.amount]));
-    for (const [id, v] of expenseEffect(oldTaxi)) preview.set(id, preview.get(id)! - v);
-    for (const [id, v] of expenseEffect(newTaxi)) preview.set(id, preview.get(id)! + v);
+    for (const [id, v] of expenseEffect(oldTaxi)) preview.set(id, must(preview.get(id)) - v);
+    for (const [id, v] of expenseEffect(newTaxi)) preview.set(id, must(preview.get(id)) + v);
     expect(Object.fromEntries(preview)).toEqual(asRecord(computeBalances([...KAZAN_MEMBERS], ledger(KAZAN_TAXI_FIXED_AMOUNT))));
   });
 });
@@ -188,8 +189,8 @@ describe('минимальный набор переводов', () => {
       const left = new Map(balances.map((x) => [x.userId, x.amount]));
       for (const t of transfers) {
         expect(t.amount).toBeGreaterThan(0);
-        left.set(t.fromId, left.get(t.fromId)! + t.amount);
-        left.set(t.toId, left.get(t.toId)! - t.amount);
+        left.set(t.fromId, must(left.get(t.fromId)) + t.amount);
+        left.set(t.toId, must(left.get(t.toId)) - t.amount);
       }
       expect([...left.values()].every((v) => v === 0)).toBe(true);
       expect(transfers.length).toBeLessThanOrEqual(Math.max(0, balances.filter((x) => x.amount).length - 1));
