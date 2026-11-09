@@ -112,6 +112,10 @@ export const groupMembers = pgTable(
       .references(() => users.id),
     joinOrder: integer('join_order').notNull(),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+    /** С какого момента баланс участника в минусе (null — не в минусе). Ведёт фоновая проверка напоминаний. */
+    debtSince: timestamp('debt_since', { withTimezone: true }),
+    /** Когда последний раз отправили напоминание: не чаще раза в неделю. */
+    lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
   },
   (t) => [
     primaryKey({ columns: [t.groupId, t.userId] }),

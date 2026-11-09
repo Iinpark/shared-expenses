@@ -6,6 +6,8 @@ export const config = {
   webOrigin: process.env.WEB_ORIGIN ?? 'http://localhost:5173',
   /** Секрет для хешей кодов входа. В dev значение по умолчанию, в проде задать обязательно. */
   secret: process.env.APP_SECRET ?? 'dev-secret-change-me',
+  /** Как часто проверять, кому пора напомнить о долге. */
+  reminderIntervalMs: Number(process.env.REMINDER_INTERVAL_MS ?? 60_000),
   isProduction: process.env.NODE_ENV === 'production',
   smtp: {
     host: process.env.SMTP_HOST ?? 'localhost',
