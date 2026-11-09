@@ -202,31 +202,31 @@ export async function deleteExpense(tx: Tx, expenseId: string, userId: string, v
 export async function balancesByGroup(tx: Tx, groupIds: string[]): Promise<Map<string, Map<string, number>>> {
   const out = new Map<string, Map<string, number>>(groupIds.map((id) => [id, new Map()]));
   if (!groupIds.length) return out;
-  const add = (groupId: string, userId: string, v: number) => {
-    const m = out.get(groupId)!;
-    m.set(userId, (m.get(userId) ?? 0) + v);
-  };
-  const members = await tx
-    .select({ groupId: groupMembers.groupId, userId: groupMembers.userId })
-    .from(groupMembers)
-    .where(inArray(groupMembers.groupId, groupIds))
-    .orderBy(asc(groupMembers.joinOrder));
-  for (const m of members) add(m.groupId, m.userId, 0);
-
-  const paid = await tx
-    .select({ groupId: expenses.groupId, userId: expenses.payerId, sum: dsql<string>`sum(${expenses.amount})` })
-    .from(expenses)
-    .where(and(inArray(expenses.groupId, groupIds), isNull(expenses.deletedAt)))
-    .groupBy(expenses.groupId, expenses.payerId);
-  for (const p of paid) add(p.groupId, p.userId, Number(p.sum));
-
-  const owed = await tx
-    .select({ groupId: expenses.groupId, userId: expenseShares.userId, sum: dsql<string>`sum(${expenseShares.amount})` })
-    .from(expenseShares)
-    .innerJoin(expenses, eq(expenses.id, expenseShares.expenseId))
-    .where(and(inArray(expenses.groupId, groupIds), isNull(expenses.deletedAt)))
-    .groupBy(expenses.groupId, expenseShares.userId);
-  for (const o of owed) add(o.groupId, o.userId, -Number(o.sum));
+  // Один запрос, а не три: внутри одного SQL-запроса Postgres видит один снимок данных,
+  // поэтому расход, сохранённый в эту же миллисекунду, не попадёт в «заплатил», минуя «доли».
+  // Участники идут с нулём, чтобы были и те, у кого расходов нет.
+  const ids = dsql.join(
+    groupIds.map((id) => dsql`${id}::uuid`),
+    dsql`, `,
+  );
+  const rows = await tx.execute<{ group_id: string; user_id: string; balance: string }>(dsql`
+    with parts as (
+      select gm.group_id, gm.user_id, 0::bigint as amount, gm.join_order
+        from group_members gm where gm.group_id in (${ids})
+      union all
+      select e.group_id, e.payer_id, e.amount, null
+        from expenses e where e.group_id in (${ids}) and e.deleted_at is null
+      union all
+      select e.group_id, s.user_id, -s.amount, null
+        from expense_shares s join expenses e on e.id = s.expense_id
+       where e.group_id in (${ids}) and e.deleted_at is null
+    )
+    select group_id, user_id, sum(amount)::text as balance
+      from parts
+     group by group_id, user_id
+     order by group_id, min(join_order) nulls last, user_id
+  `);
+  for (const r of rows) out.get(r.group_id)!.set(r.user_id, Number(r.balance));
 
   for (const [groupId, m] of out) {
     const sum = [...m.values()].reduce((s, v) => s + v, 0);

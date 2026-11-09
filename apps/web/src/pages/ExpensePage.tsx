@@ -6,6 +6,7 @@ import {
   EXPENSE_CATEGORIES,
   expenseEffect,
   formatAmount,
+  MAX_AMOUNT,
   parseAmount,
   SplitError,
   type CurrencyCode,
@@ -40,7 +41,11 @@ export function ExpensePage() {
     queryFn: () => api<ExpenseDto>('GET', `/api/expenses/${expenseId}`),
     enabled: !!expenseId,
     retry: false,
-    staleTime: 0,
+    // Пока форма открыта, расход не перезапрашиваем: иначе версия тихо обновится под старыми полями
+    // и правка затрёт чужую без 409. Свежие данные — при следующем открытии формы.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const notFound = (e: unknown) => e instanceof ApiError && e.status === 404;
@@ -99,10 +104,14 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
   const [lastEdited, setLastEdited] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conflict, setConflict] = useState<{ current: ExpenseDto | null } | null>(null);
+  /** Версия, с которой человек начал править: её и отправляем, а не то, что потом пришло с сервера. */
+  const [baseVersion] = useState(expense?.version);
+  const [conflict, setConflict] = useState<{ current: ExpenseDto | null; action: 'save' | 'delete' } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const total = parseAmount(amountText, currency);
+  const parsed = parseAmount(amountText, currency);
+  const tooBig = parsed !== null && parsed > MAX_AMOUNT;
+  const total = tooBig ? null : parsed;
   const split: SplitInput =
     mode === 'equal'
       ? { mode, userIds: members.filter((m) => selected.has(m.userId)).map((m) => m.userId) }
@@ -137,7 +146,7 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
     };
   }
 
-  async function save(version = expense?.version) {
+  async function save(version = baseVersion) {
     setBusy(true);
     setError(null);
     try {
@@ -149,10 +158,10 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
       navigate(`/groups/${g.id}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && (err.code === 'version_conflict' || err.code === 'expense_deleted')) {
-        setConflict({ current: (err.body as ExpenseConflictBody | undefined)?.current ?? null });
+        setConflict({ current: (err.body as ExpenseConflictBody | undefined)?.current ?? null, action: 'save' });
         void invalidateGroup(qc, g.id); // превью балансов должно считаться от свежих цифр
       } else if (err instanceof ApiError && err.status === 404 && expense) {
-        setConflict({ current: null });
+        setConflict({ current: null, action: 'save' });
       } else {
         setError(errorText(err));
       }
@@ -161,17 +170,20 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
     }
   }
 
-  async function remove() {
+  async function remove(version = baseVersion) {
     if (!expense) return;
     setBusy(true);
     setError(null);
     try {
-      await api('DELETE', `/api/expenses/${expense.id}?version=${expense.version}`);
+      await api('DELETE', `/api/expenses/${expense.id}?version=${version}`);
       await invalidateGroup(qc, g.id);
       toast('Расход удалён');
       navigate(`/groups/${g.id}`);
     } catch (err) {
-      if (err instanceof ApiError && (err.status === 409 || err.status === 404)) setConflict({ current: (err.body as ExpenseConflictBody | undefined)?.current ?? null });
+      if (err instanceof ApiError && (err.status === 409 || err.status === 404)) {
+        setConflict({ current: (err.body as ExpenseConflictBody | undefined)?.current ?? null, action: 'delete' });
+        void invalidateGroup(qc, g.id);
+      }
       else setError(errorText(err));
     } finally {
       setBusy(false);
@@ -216,7 +228,8 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
               aria-invalid={!!amountText && total === null}
             />
             {expense && total !== expense.amount && <span className="amount-was">было {money(expense.amount, currency)}</span>}
-            {!!amountText && total === null && <span className="field-error">Похоже, в сумме опечатка</span>}
+            {tooBig && <span className="field-error">Слишком большая сумма</span>}
+            {!!amountText && parsed === null && <span className="field-error">Похоже, в сумме опечатка</span>}
           </label>
 
           <label className="field">
@@ -376,7 +389,7 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
         )}
 
         <div className="form-foot">
-          {conflict && <ConflictNotice g={g} current={conflict.current} meId={me.id} busy={busy} onOverwrite={() => conflict.current && void save(conflict.current.version)} />}
+          {conflict && <ConflictNotice g={g} current={conflict.current} meId={me.id} busy={busy} action={conflict.action} onOverwrite={() => conflict.current && void (conflict.action === 'delete' ? remove(conflict.current.version) : save(conflict.current.version))} />}
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn btn--primary btn--main" disabled={!canSave || !!conflict}>
             {expense ? 'Сохранить изменения' : total ? fill(copy.expense.save, { amount: moneyCur(total, currency) }) : 'Сохранить'}
@@ -386,7 +399,7 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
             (confirmDelete ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginTop: 8 }}>
                 <span className="hint">Удалить расход для всех?</span>
-                <button type="button" className="btn btn--sm" style={{ borderColor: 'var(--minus)', color: 'var(--minus-strong)' }} onClick={remove} disabled={busy}>
+                <button type="button" className="btn btn--sm" style={{ borderColor: 'var(--minus)', color: 'var(--minus-strong)' }} onClick={() => void remove()} disabled={busy}>
                   Удалить
                 </button>
                 <button type="button" className="btn btn--sm" onClick={() => setConfirmDelete(false)}>
@@ -543,7 +556,8 @@ function EditPreview(p: {
  * Пока форма была открыта, расход изменили или удалили (409). Упрощённая версия ConflictSheet из S03:
  * показываем, что сейчас в базе, и даём выбор. Полный экран с двумя карточками — вместе с реалтаймом.
  */
-function ConflictNotice({ g, current, meId, busy, onOverwrite }: { g: GroupDto; current: ExpenseDto | null; meId: string; busy: boolean; onOverwrite: () => void }) {
+function ConflictNotice(p: { g: GroupDto; current: ExpenseDto | null; meId: string; busy: boolean; action: 'save' | 'delete'; onOverwrite: () => void }) {
+  const { g, current, meId, busy, onOverwrite } = p;
   if (!current) {
     return (
       <div className="warn" role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -566,7 +580,7 @@ function ConflictNotice({ g, current, meId, busy, onOverwrite }: { g: GroupDto; 
       </span>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" className="btn btn--sm btn--primary" disabled={busy} onClick={onOverwrite}>
-          {copy.live.conflictApply}
+          {p.action === 'delete' ? 'Всё равно удалить' : copy.live.conflictApply}
         </button>
         <Link to={`/groups/${g.id}`} className="btn btn--sm">
           Оставить как есть
