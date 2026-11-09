@@ -11,6 +11,10 @@ dist/
 .env.local
 apps/server/uploads/
 
+# Отчёты e2e
+e2e/report/
+test-results/
+
 # Системное
 .DS_Store
 

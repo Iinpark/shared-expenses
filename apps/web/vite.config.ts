@@ -5,10 +5,11 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    port: Number(process.env.WEB_PORT ?? 5173),
     strictPort: true,
     proxy: {
-      '/api': 'http://localhost:3000',
+      // Адрес сервера можно переопределить: e2e-тесты поднимают свой сервер на другом порту.
+      '/api': process.env.API_TARGET ?? 'http://localhost:3000',
     },
   },
 });
