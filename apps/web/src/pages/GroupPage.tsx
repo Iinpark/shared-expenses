@@ -1,14 +1,16 @@
-import { byGender, currencySymbol, naiveTransferCount, type BalancesDto, type CurrencyCode, type ExpenseDto, type GroupDto, type MemberDto, type Transfer } from '@se/shared';
+import { byGender, canEditExpense, currencySymbol, naiveTransferCount, type BalancesDto, type CurrencyCode, type ExpenseDto, type GroupDto, type MemberDto, type Transfer } from '@se/shared';
+import type { ReactNode } from 'react';
 import { Link, NavLink, useParams } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
 import { useToast } from '../components/Toast.js';
-import { ApiError } from '../lib/api.js';
 import { copy, fill } from '../lib/copy.js';
-import { CATEGORY_LABELS, countGenitive, money, moneyCur, shortDate, splitLabel, useBalances, useExpenses } from '../lib/expenses.js';
-import { inviteLink, useGroup } from '../lib/groups.js';
+import { CATEGORY_LABELS, countGenitive, inviteLink, money, moneyCur, shortDate, splitLabel } from '../lib/format.js';
+import { clock } from '../lib/events.js';
+import { ApiError, useBalances, useCurrentUser, useExpenses, useGroup, useRealtimeStatus } from '../lib/queries/index.js';
 import { dayMonth, joinNames, plural } from '../lib/ru.js';
-import { useCurrentUser } from '../lib/session.js';
+import { markKey, useChangeMarks, type Marks } from './group/changes.js';
+import { FeedPanel } from './group/Feed.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
 type Tab = 'balance' | 'expenses' | 'feed';
@@ -26,33 +28,71 @@ export function GroupPage({ tab }: { tab: Tab }) {
 
   if (group.error instanceof ApiError && group.error.status === 404) return <NotFoundPage />;
   if (!group.data || !expenses.data || !balances.data) return <p className="hint" style={{ padding: 20 }}>Загружаем…</p>;
-  return <GroupView tab={tab} ctx={{ g: group.data, meId: me.id, expenses: expenses.data, balances: balances.data }} />;
+  return <GroupView tab={tab} data={{ g: group.data, meId: me.id, expenses: expenses.data, balances: balances.data }} />;
 }
 
-function GroupView({ tab, ctx }: { tab: Tab; ctx: Ctx }) {
-  const { g } = ctx;
+function GroupView({ tab, data }: { tab: Tab; data: Omit<Ctx, 'marks'> }) {
+  const { g } = data;
+  const marks = useChangeMarks(g.id, data.meId, data.balances, data.expenses);
+  const { online, freshAt } = useRealtimeStatus();
+  const ctx: Ctx = { ...data, marks };
   const open = g.status === 'open';
   return (
-    <div className="page">
+    <div className={`page${online ? '' : ' is-stale'}`}>
       <GroupHeader g={g} isOwner={g.ownerId === ctx.meId} tab={tab} />
       {!open && <ClosedBanner g={g} />}
+      {!online && <OfflineBanner freshAt={freshAt} />}
       {open && (
-        <div className="group-body desktop-only" style={{ padding: '20px 24px 0' }}>
-          <Link to={`/groups/${g.id}/expenses/new`} className="btn btn--primary" style={{ height: 44 }}>
-            <Icon name="plus" size={18} strokeWidth={2.2} />
-            Расход
-          </Link>
+        <div className="group-body desktop-only add-row">
+          <AddButton g={g} online={online} />
         </div>
       )}
       <GroupContent tab={tab} ctx={ctx} />
       {open && (
         <div className="add-bar mobile-only">
-          <Link to={`/groups/${g.id}/expenses/new`} className="btn btn--primary btn--main">
-            <Icon name="plus" size={20} strokeWidth={2.2} />
-            Расход
-          </Link>
+          <AddButton g={g} online={online} main />
         </div>
       )}
+    </div>
+  );
+}
+
+/** AddExpenseButton. Без связи кнопка неактивна, а под ней — почему (S03 «Нет связи»). */
+function AddButton({ g, online, main = false }: { g: GroupDto; online: boolean; main?: boolean }) {
+  const cls = `btn btn--primary${main ? ' btn--main' : ' add-row__btn'}`;
+  const icon = <Icon name="plus" size={main ? 20 : 18} strokeWidth={2.2} />;
+  if (online) {
+    return (
+      <Link to={`/groups/${g.id}/expenses/new`} className={cls}>
+        {icon}
+        Расход
+      </Link>
+    );
+  }
+  return (
+    <div className="add-offline">
+      <button type="button" className={cls} disabled aria-describedby={`offline-add-${main ? 'm' : 'd'}`}>
+        {icon}
+        Расход
+      </button>
+      <p id={`offline-add-${main ? 'm' : 'd'}`} className="hint-sm add-offline__hint">
+        {copy.live.offlineAdd}
+      </p>
+    </div>
+  );
+}
+
+/** Banner «нет связи»: с какого момента данные могут быть устаревшими. */
+function OfflineBanner({ freshAt }: { freshAt: number }) {
+  const [head, ...rest] = fill(copy.live.offline, { time: clock(freshAt) }).split('. ');
+  return (
+    <div className="banner banner--offline" role="status">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" style={{ flex: 'none' }}>
+        <path d="M3 3l18 18M8.5 16.5a5 5 0 017 0M5 12.5a10 10 0 015-2.5M19 12.5a10 10 0 00-3-2M12 20h.01" />
+      </svg>
+      <span>
+        <strong>{head}.</strong> {rest.join('. ')}
+      </span>
     </div>
   );
 }
@@ -106,13 +146,13 @@ function GroupContent({ tab, ctx }: { tab: Tab; ctx: Ctx }) {
   if (ctx.expenses.length === 0) {
     return (
       <div className="group-body" style={{ maxWidth: 640 }}>
-        {tab === 'feed' ? <FeedStub /> : <EmptyGroup group={ctx.g} meId={ctx.meId} />}
+        {tab === 'feed' ? <FeedPanel g={ctx.g} meId={ctx.meId} /> : <EmptyGroup group={ctx.g} meId={ctx.meId} />}
       </div>
     );
   }
   return (
     <div className="group-body group-grid">
-      <main className={tab === 'balance' ? 'desktop-only' : ''}>{tab === 'feed' ? <FeedStub /> : <ExpensesPanel {...ctx} />}</main>
+      <main className={tab === 'balance' ? 'desktop-only' : ''}>{tab === 'feed' ? <FeedPanel g={ctx.g} meId={ctx.meId} /> : <ExpensesPanel {...ctx} />}</main>
       <aside className={tab === 'balance' ? '' : 'desktop-only'}>
         <BalancePanel {...ctx} />
       </aside>
@@ -125,7 +165,25 @@ interface Ctx {
   meId: string;
   expenses: ExpenseDto[];
   balances: BalancesDto;
+  marks: Marks;
 }
+
+/** Amount с подсветкой changed и зачёркнутым старым значением, если число поменялось, пока экран открыт. */
+function Changed({ old, children }: { old: string | null; children: ReactNode }) {
+  if (old === null) return children;
+  return (
+    <span className="changed-amount">
+      <s className="n struck">{old}</s>
+      <span className="changed">{children}</span>
+    </span>
+  );
+}
+
+/** Старое значение по отметке: строкой, если число поменялось, иначе null. */
+const oldText = (marks: Marks, key: string, fmt: (v: number) => string) => {
+  const old = marks.get(key);
+  return old === undefined || old === null ? null : fmt(old);
+};
 
 const nameOf = (g: GroupDto, userId: string) => g.members.find((m) => m.userId === userId)?.name ?? 'Бывший участник';
 
@@ -146,7 +204,7 @@ function BalancePanel(ctx: Ctx) {
         </div>
         <div className="list">
           {ctx.expenses.slice(0, 3).map((e) => (
-            <ExpenseRow key={e.id} e={e} g={ctx.g} meId={ctx.meId} />
+            <ExpenseRow key={e.id} e={e} g={ctx.g} meId={ctx.meId} marks={ctx.marks} />
           ))}
         </div>
       </section>
@@ -182,7 +240,11 @@ function BalanceHero(ctx: Ctx) {
   return (
     <section className="hero">
       <p className="hero__label">{heroLabel(mine)}</p>
-      {mine !== 0 && <p className={`hero__amount n ${signClass(mine)}`}>{moneyCur(Math.abs(mine), ctx.g.currency)}</p>}
+      {mine !== 0 && (
+        <p className={`hero__amount n ${signClass(mine)}`}>
+          <Changed old={oldText(ctx.marks, markKey.myBalance, (v) => money(v, ctx.g.currency, true))}>{moneyCur(Math.abs(mine), ctx.g.currency)}</Changed>
+        </p>
+      )}
       <p className="hero__sub">{heroSub(ctx, mine)}</p>
     </section>
   );
@@ -223,7 +285,7 @@ function TransfersSection({ g, meId, balances }: Ctx) {
   );
 }
 
-function BalancesSection({ g, meId, balances }: Ctx) {
+function BalancesSection({ g, meId, balances, marks }: Ctx) {
   return (
     <section className="panel-section">
       <div className="panel-section__head">
@@ -243,7 +305,9 @@ function BalancesSection({ g, meId, balances }: Ctx) {
                 </span>
                 <span className="row__meta">{balanceNote(b.amount, m)}</span>
               </div>
-              <span className={`n balance-amount ${signClass(b.amount, 'text-2')}`}>{money(b.amount, g.currency, true)}</span>
+              <span className={`n balance-amount ${signClass(b.amount, 'text-2')}`}>
+                <Changed old={oldText(marks, markKey.balance(b.userId), (v) => money(v, g.currency, true))}>{money(b.amount, g.currency, true)}</Changed>
+              </span>
             </div>
           );
         })}
@@ -276,7 +340,10 @@ function myShareText(e: ExpenseDto, g: GroupDto, meId: string): string {
   return share ? fill(copy.expense.yourShare, { amount: money(share.amount, g.currency) }) : copy.expense.notYou;
 }
 
-function ExpenseRow({ e, g, meId }: { e: ExpenseDto; g: GroupDto; meId: string }) {
+/** Ссылку на форму правки даём, только если группа открыта и человеку можно править этот расход. */
+const editable = (e: ExpenseDto, g: GroupDto, meId: string) => g.status === 'open' && canEditExpense(e, meId, g.ownerId);
+
+function ExpenseRow({ e, g, meId, marks }: { e: ExpenseDto; g: GroupDto; meId: string; marks: Marks }) {
   const body = (
     <>
       <div className="row__main">
@@ -284,21 +351,24 @@ function ExpenseRow({ e, g, meId }: { e: ExpenseDto; g: GroupDto; meId: string }
         <span className="row__meta">{expenseMeta(e, g, meId)}</span>
       </div>
       <div className="expense-row__side">
-        <span className="n expense-row__amount">{money(e.amount, g.currency)}</span>
+        <span className="n expense-row__amount">
+          <Changed old={oldText(marks, markKey.expense(e.id), (v) => money(v, g.currency))}>{money(e.amount, g.currency)}</Changed>
+        </span>
         <span className="row__meta n">{myShareText(e, g, meId)}</span>
       </div>
     </>
   );
-  return g.status === 'open' ? (
-    <Link to={`/groups/${g.id}/expenses/${e.id}`} className="row expense-row">
+  const cls = `row expense-row${marks.has(markKey.expense(e.id)) ? ' changed-row' : ''}`;
+  return editable(e, g, meId) ? (
+    <Link to={`/groups/${g.id}/expenses/${e.id}`} className={cls}>
       {body}
     </Link>
   ) : (
-    <div className="row expense-row">{body}</div>
+    <div className={cls}>{body}</div>
   );
 }
 
-function ExpensesPanel({ g, meId, expenses, balances }: Ctx) {
+function ExpensesPanel({ g, meId, expenses, balances, marks }: Ctx) {
   const myTotal = expenses.reduce((s, e) => s + (e.shares.find((x) => x.userId === meId)?.amount ?? 0), 0);
   const count = `${expenses.length} ${plural(expenses.length, 'расход', 'расхода', 'расходов')}`;
   return (
@@ -307,7 +377,7 @@ function ExpensesPanel({ g, meId, expenses, balances }: Ctx) {
       <div className="mobile-only">
         <div className="list">
           {expenses.map((e) => (
-            <ExpenseRow key={e.id} e={e} g={g} meId={meId} />
+            <ExpenseRow key={e.id} e={e} g={g} meId={meId} marks={marks} />
           ))}
         </div>
         <p className="hint-sm" style={{ margin: '12px 20px 0' }}>
@@ -332,9 +402,9 @@ function ExpensesPanel({ g, meId, expenses, balances }: Ctx) {
             {expenses.map((e) => {
               const share = e.shares.find((s) => s.userId === meId);
               return (
-                <tr key={e.id}>
+                <tr key={e.id} className={marks.has(markKey.expense(e.id)) ? 'changed-row' : undefined}>
                   <td>
-                    {g.status === 'open' ? (
+                    {editable(e, g, meId) ? (
                       <Link to={`/groups/${g.id}/expenses/${e.id}`} className="expenses-table__title">
                         {e.title || CATEGORY_LABELS[e.category]}
                       </Link>
@@ -349,7 +419,7 @@ function ExpensesPanel({ g, meId, expenses, balances }: Ctx) {
                   <td>{e.payerId === meId ? 'Ты' : nameOf(g, e.payerId)}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{splitLabel(e, g.memberCount)}</td>
                   <td className="num n" style={{ color: 'var(--ink)', fontWeight: 600 }}>
-                    {money(e.amount, g.currency)}
+                    <Changed old={oldText(marks, markKey.expense(e.id), (v) => money(v, g.currency))}>{money(e.amount, g.currency)}</Changed>
                   </td>
                   <td className="num n">{share ? money(share.amount, g.currency) : 'не участвуешь'}</td>
                 </tr>
@@ -366,17 +436,6 @@ function ExpensesPanel({ g, meId, expenses, balances }: Ctx) {
         </table>
       </div>
     </>
-  );
-}
-
-function FeedStub() {
-  return (
-    <section style={{ padding: '28px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p className="empty__title">Здесь будет история группы</p>
-      <p className="text-2" style={{ fontSize: 15 }}>
-        Кто что добавил, изменил и погасил. Появится на следующем этапе разработки.
-      </p>
-    </section>
   );
 }
 

@@ -1,6 +1,5 @@
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
-import websocket from '@fastify/websocket';
 import type { HealthResponse } from '@se/shared';
 import Fastify from 'fastify';
 import { authRoutes } from './auth/routes.js';
@@ -10,6 +9,8 @@ import { sql } from './db/client.js';
 import { expenseRoutes } from './expenses/routes.js';
 import { groupRoutes } from './groups/routes.js';
 import { registerErrorHandler } from './lib/errors.js';
+import { RealtimeHub } from './realtime/hub.js';
+import { realtimeRoutes } from './realtime/routes.js';
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({
@@ -21,7 +22,6 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   registerErrorHandler(app);
   await app.register(cors, { origin: config.webOrigin, credentials: true });
   await app.register(cookie);
-  await app.register(websocket);
 
   app.decorateRequest('user', null);
   app.addHook('onRequest', async (req) => {
@@ -44,10 +44,13 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   await app.register(groupRoutes);
   await app.register(expenseRoutes);
 
-  // Канал реалтайм-событий. Пока только приветствие; события групп появятся позже.
-  app.get('/ws', { websocket: true }, (socket) => {
-    socket.send(JSON.stringify({ type: 'hello', time: new Date().toISOString() }));
+  // Реалтайм: поток событий групп пользователя (SSE).
+  const hub = new RealtimeHub();
+  await hub.start(app.log);
+  app.addHook('onClose', async () => {
+    await hub.stop();
   });
+  await app.register((instance) => realtimeRoutes(instance, hub));
 
   return app;
 }

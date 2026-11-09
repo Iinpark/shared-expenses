@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
+import { LiveToastListener } from './components/LiveToast.js';
 import { ToastProvider } from './components/Toast.js';
-import { useMe } from './lib/session.js';
+import { RealtimeProvider, useMe } from './lib/queries/index.js';
 import { CreateGroupPage } from './pages/CreateGroupPage.js';
 import { ExpensePage } from './pages/ExpensePage.js';
 import { GroupPage } from './pages/GroupPage.js';
@@ -18,14 +19,20 @@ function RequireUser({ children }: { children: ReactNode }) {
   if (me.isPending) return null;
   if (me.isError) return <p className="hint" style={{ padding: 20 }}>Нет связи с сервером. Обнови страницу чуть позже.</p>;
   if (!me.data?.name) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
-  return children;
+  return (
+    <>
+      <LiveToastListener />
+      {children}
+    </>
+  );
 }
 
 export function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <Routes>
+        <RealtimeProvider>
+          <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/j/:token" element={<InvitePage />} />
           <Route path="/" element={<RequireUser><GroupsPage /></RequireUser>} />
@@ -37,7 +44,8 @@ export function App() {
           <Route path="/groups/:id/feed" element={<RequireUser><GroupPage tab="feed" /></RequireUser>} />
           <Route path="/groups/:id/settings" element={<RequireUser><SettingsPage /></RequireUser>} />
           <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+          </Routes>
+        </RealtimeProvider>
       </ToastProvider>
     </BrowserRouter>
   );

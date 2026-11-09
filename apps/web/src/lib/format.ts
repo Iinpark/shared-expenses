@@ -1,23 +1,6 @@
-import { currencySymbol, formatAmount, must, type BalancesDto, type CurrencyCode, type ExpenseCategory, type ExpenseDto } from '@se/shared';
-import { useQuery, type QueryClient } from '@tanstack/react-query';
-import { api } from './api.js';
+/** Форматирование для интерфейса: деньги, категории, даты, ссылки. Без запросов к API. */
+import { currencySymbol, formatAmount, must, type CurrencyCode, type ExpenseCategory, type ExpenseDto } from '@se/shared';
 import { copy } from './copy.js';
-
-export const useExpenses = (groupId: string) =>
-  useQuery({ queryKey: ['expenses', groupId], queryFn: () => api<ExpenseDto[]>('GET', `/api/groups/${groupId}/expenses`), retry: false });
-
-export const useBalances = (groupId: string) =>
-  useQuery({ queryKey: ['balances', groupId], queryFn: () => api<BalancesDto>('GET', `/api/groups/${groupId}/balances`), retry: false });
-
-/** После любого изменения расходов: балансы группы, список расходов, сама группа и список групп. */
-export function invalidateGroup(qc: QueryClient, groupId: string) {
-  return Promise.all([
-    qc.invalidateQueries({ queryKey: ['expenses', groupId] }),
-    qc.invalidateQueries({ queryKey: ['balances', groupId] }),
-    qc.invalidateQueries({ queryKey: ['group', groupId] }),
-    qc.invalidateQueries({ queryKey: ['groups'] }),
-  ]);
-}
 
 const [food, transport, housing, fun, other] = copy.expense.categories;
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
@@ -65,3 +48,6 @@ const GENITIVE_COUNT: Record<number, string> = { 2: 'двоих', 3: 'троих
 
 /** «хватит трёх»: родительный падеж числа переводов. */
 export const countGenitive = (n: number) => ['', 'одного', 'двух', 'трёх', 'четырёх', 'пяти', 'шести', 'семи', 'восьми', 'девяти', 'десяти'][n] ?? String(n);
+
+/** Ссылка-приглашение в группу. */
+export const inviteLink = (token: string) => `${location.origin}/j/${token}`;

@@ -13,15 +13,16 @@ import {
   type SplitInput,
   type SplitMode,
 } from '@se/shared';
-import { useMemo, useState } from 'react';
-import { errorText } from '../../lib/api.js';
+import { useEffect, useMemo, useState } from 'react';
+import { errorText } from '../../lib/queries/index.js';
 import { copy, fill } from '../../lib/copy.js';
-import { CATEGORY_LABELS, today } from '../../lib/expenses.js';
+import { CATEGORY_LABELS, today } from '../../lib/format.js';
+import { loadDraft, saveDraft } from './draftStore.js';
 
 export type Weights = Record<string, number>;
 export type Texts = Record<string, string>;
 
-interface Fields {
+export interface Fields {
   amountText: string;
   title: string;
   category: ExpenseCategory;
@@ -105,7 +106,9 @@ export function useExpenseDraft(g: GroupDto, expense: ExpenseDto | undefined, me
   const currency = g.currency as CurrencyCode;
   const memberIds = useMemo(() => g.members.map((m) => m.userId), [g.members]);
   const joinOrder = useMemo(() => new Map(g.members.map((m) => [m.userId, m.joinOrder])), [g.members]);
-  const [init] = useState(() => initialFields(expense, meId, currency));
+  // Новый расход продолжаем с того места, где человек остановился (черновик в localStorage).
+  const [stored] = useState(() => (expense ? null : loadDraft(g.id, memberIds, meId)));
+  const [init] = useState(() => stored ?? initialFields(expense, meId, currency));
 
   const [amountText, setAmountText] = useState(init.amountText);
   const [title, setTitle] = useState(init.title);
@@ -114,9 +117,14 @@ export function useExpenseDraft(g: GroupDto, expense: ExpenseDto | undefined, me
   const [spentOn, setSpentOn] = useState(init.spentOn);
   const [comment, setComment] = useState(init.comment);
   const [mode, setMode] = useState<SplitMode>(init.mode);
-  const [selected, setSelected] = useState(() => initialSelected(expense, memberIds));
-  const [weights, setWeights] = useState(() => initialWeights(expense, memberIds));
-  const [exact, setExact] = useState(() => initialExact(expense, memberIds, currency));
+  const [selected, setSelected] = useState(() => (stored ? new Set(stored.selected) : initialSelected(expense, memberIds)));
+  const [weights, setWeights] = useState(() => ({ ...initialWeights(expense, memberIds), ...stored?.weights }));
+  const [exact, setExact] = useState(() => ({ ...initialExact(expense, memberIds, currency), ...stored?.exact }));
+
+  useEffect(() => {
+    if (expense) return;
+    saveDraft(g.id, { amountText, title, category, payerId, spentOn, comment, mode, selected: [...selected], weights, exact });
+  }, [expense, g.id, amountText, title, category, payerId, spentOn, comment, mode, selected, weights, exact]);
   const [lastEdited, setLastEdited] = useState<string | null>(null);
 
   const { parsed, tooBig, total } = parseTotal(amountText, currency);

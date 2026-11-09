@@ -1,5 +1,4 @@
 import type { CurrencyCode, GroupDto, Me } from '@se/shared';
-import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
@@ -7,10 +6,9 @@ import { CurrencyPicker, currencyLabel } from '../components/CurrencyPicker.js';
 import { EmailChips } from '../components/EmailChips.js';
 import { Icon } from '../components/Icon.js';
 import { useToast } from '../components/Toast.js';
-import { api, ApiError, errorText } from '../lib/api.js';
 import { copy } from '../lib/copy.js';
-import { inviteLink, useGroup } from '../lib/groups.js';
-import { useCurrentUser } from '../lib/session.js';
+import { inviteLink } from '../lib/format.js';
+import { ApiError, errorText, useCurrentUser, useGroup, useInviteByEmail, useRotateInviteLink, useUpdateGroup } from '../lib/queries/index.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
 /** D04: настройки группы. Менять может только создатель, остальные видят участников и могут позвать людей. */
@@ -49,20 +47,17 @@ export function SettingsPage() {
   );
 }
 
-/** Общая обвязка действий на странице: блокировка кнопок, ошибка, обновление кэша группы, тост. */
-function useGroupAction(groupId: string) {
-  const qc = useQueryClient();
+/** Общая обвязка действий на странице: блокировка кнопок, ошибка, тост. Кэш группы обновляют сами мутации. */
+function useGroupAction() {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function act(fn: () => Promise<GroupDto>, done?: string) {
+  async function act(fn: () => Promise<unknown>, done?: string) {
     setBusy(true);
     setError(null);
     try {
-      const updated = await fn();
-      qc.setQueryData(['group', groupId], updated);
-      await qc.invalidateQueries({ queryKey: ['groups'] });
+      await fn();
       if (done) toast(done);
     } catch (err) {
       setError(errorText(err));
@@ -78,14 +73,15 @@ function SettingsForm({ group: g }: { group: GroupDto }) {
   const [name, setName] = useState(g.name);
   const [currency, setCurrency] = useState<CurrencyCode>(g.currency as CurrencyCode);
   const [days, setDays] = useState(String(g.reminderDays));
-  const { busy, error, act } = useGroupAction(g.id);
+  const { busy, error, act } = useGroupAction();
+  const update = useUpdateGroup(g.id);
 
   const daysValid = /^\d+$/.test(days) && Number(days) >= 1 && Number(days) <= 90;
   const dirty = name.trim() !== g.name || currency !== g.currency || Number(days) !== g.reminderDays;
   const canSave = !busy && !!name.trim() && daysValid;
 
   const save = () =>
-    act(() => api<GroupDto>('PATCH', `/api/groups/${g.id}`, { name, currency, reminderDays: Number(days) }), 'Настройки сохранены');
+    act(() => update.mutateAsync({ name, currency, reminderDays: Number(days) }), 'Настройки сохранены');
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -167,15 +163,16 @@ function MembersSection({ group: g, me, isOwner }: { group: GroupDto; me: Me; is
   const toast = useToast();
   const [emails, setEmails] = useState<string[]>([]);
   const [showEmail, setShowEmail] = useState(false);
-  const { busy, error, act } = useGroupAction(g.id);
+  const { busy, error, act } = useGroupAction();
+  const invite = useInviteByEmail(g.id);
+  const rotateLink = useRotateInviteLink(g.id);
   const open = g.status === 'open';
 
   const sendInvites = () =>
     act(async () => {
-      const updated = await api<GroupDto>('POST', `/api/groups/${g.id}/invites`, { emails });
+      await invite.mutateAsync(emails);
       setEmails([]);
       setShowEmail(false);
-      return updated;
     }, 'Приглашения отправлены');
 
   const copyLink = async () => {
@@ -183,7 +180,7 @@ function MembersSection({ group: g, me, isOwner }: { group: GroupDto; me: Me; is
     toast('Ссылка скопирована');
   };
 
-  const rotate = () => act(() => api<GroupDto>('POST', `/api/groups/${g.id}/invite-link/rotate`), 'Новая ссылка готова, старая больше не работает');
+  const rotate = () => act(() => rotateLink.mutateAsync(), 'Новая ссылка готова, старая больше не работает');
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 28, borderTop: '1px solid var(--line)' }}>

@@ -1,7 +1,6 @@
 import type { Gender, Me } from '@se/shared';
 import { useState, type ReactNode, type SyntheticEvent } from 'react';
-import { api, errorText } from '../lib/api.js';
-import { useMe, useSetMe } from '../lib/session.js';
+import { errorText, useMe, useRequestCode, useUpdateProfile, useVerifyCode } from '../lib/queries/index.js';
 
 type Step = 'email' | 'code' | 'profile';
 
@@ -11,7 +10,9 @@ type Step = 'email' | 'code' | 'profile';
  */
 export function AuthFlow({ submitLabel = 'Получить код', onDone }: { submitLabel?: string; onDone?: (me: Me) => void }) {
   const me = useMe().data;
-  const setMe = useSetMe();
+  const requestCode = useRequestCode();
+  const verifyCode = useVerifyCode();
+  const updateProfile = useUpdateProfile();
   const [step, setStep] = useState<Step>(me && !me.name ? 'profile' : 'email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -36,7 +37,7 @@ export function AuthFlow({ submitLabel = 'Получить код', onDone }: { 
   const sendCode = (e?: SyntheticEvent) => {
     e?.preventDefault();
     return run(async () => {
-      await api('POST', '/api/auth/request-code', { email });
+      await requestCode.mutateAsync(email);
       setStep('code');
       setCode('');
     });
@@ -45,8 +46,7 @@ export function AuthFlow({ submitLabel = 'Получить код', onDone }: { 
   const verify = (e: SyntheticEvent) => {
     e.preventDefault();
     return run(async () => {
-      const user = await api<Me>('POST', '/api/auth/verify', { email, code });
-      setMe(user);
+      const user = await verifyCode.mutateAsync({ email, code });
       if (user.name) onDone?.(user);
       else setStep('profile');
     });
@@ -55,8 +55,7 @@ export function AuthFlow({ submitLabel = 'Получить код', onDone }: { 
   const saveProfile = (e: SyntheticEvent) => {
     e.preventDefault();
     return run(async () => {
-      const user = await api<Me>('PATCH', '/api/me', { name, gender });
-      setMe(user);
+      const user = await updateProfile.mutateAsync({ name, gender });
       onDone?.(user);
     });
   };

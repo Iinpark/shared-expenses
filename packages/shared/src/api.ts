@@ -200,3 +200,48 @@ export interface BalancesDto {
 export interface ExpenseConflictBody extends ApiErrorBody {
   current: ExpenseDto | null;
 }
+
+// ---------- События группы: лента и реалтайм ----------
+
+/** Расход в событии: столько, чтобы показать «что было → что стало» и кого задело. */
+export interface ExpenseSnapshot {
+  id: string;
+  title: string;
+  category: ExpenseCategory;
+  amount: number;
+  payerId: string;
+  spentOn: string;
+  shares: { userId: string; amount: number }[];
+}
+
+export type GroupEventPayload =
+  | { type: 'expense_created'; after: ExpenseSnapshot }
+  | { type: 'expense_updated'; before: ExpenseSnapshot; after: ExpenseSnapshot }
+  | { type: 'expense_deleted'; before: ExpenseSnapshot }
+  | { type: 'member_joined'; userId: string; name: string }
+  | { type: 'group_updated'; changes: { field: 'name' | 'currency' | 'reminderDays'; from: string | number; to: string | number }[] };
+
+export type GroupEventType = GroupEventPayload['type'];
+
+export interface GroupEventDto {
+  id: string;
+  groupId: string;
+  actorId: string;
+  /** Имя на момент запроса: участник мог переименоваться. */
+  actorName: string;
+  createdAt: string;
+  payload: GroupEventPayload;
+}
+
+/** Страница ленты: события от новых к старым, nextBefore — id события-курсора для следующей страницы. */
+export interface GroupEventsPage {
+  events: GroupEventDto[];
+  nextBefore: string | null;
+}
+
+/**
+ * Поток GET /api/events/stream (Server-Sent Events). Типы событий в потоке:
+ * group_event — данные GroupEventDto; resync — пропущено слишком много, перезагрузить всё;
+ * ready — досылка после переподключения закончена.
+ */
+export const SSE_EVENTS = { groupEvent: 'group_event', resync: 'resync', ready: 'ready' } as const;

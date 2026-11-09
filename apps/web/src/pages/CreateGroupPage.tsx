@@ -1,21 +1,19 @@
-import type { CurrencyCode, GroupDto } from '@se/shared';
-import { useQueryClient } from '@tanstack/react-query';
+import type { CurrencyCode } from '@se/shared';
 import { useState, type SyntheticEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
 import { CurrencyPicker } from '../components/CurrencyPicker.js';
 import { EmailChips } from '../components/EmailChips.js';
 import { Icon } from '../components/Icon.js';
-import { api, errorText } from '../lib/api.js';
 import { copy, fill } from '../lib/copy.js';
 import { peopleCount } from '../lib/ru.js';
-import { useCurrentUser } from '../lib/session.js';
+import { errorText, useCreateGroup, useCurrentUser } from '../lib/queries/index.js';
 
 /** M09: создание группы и приглашение. */
 export function CreateGroupPage() {
   const me = useCurrentUser();
   const navigate = useNavigate();
-  const qc = useQueryClient();
+  const createGroup = useCreateGroup();
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>('KZT');
   const [days, setDays] = useState('7');
@@ -31,9 +29,7 @@ export function CreateGroupPage() {
     setBusy(true);
     setError(null);
     try {
-      const group = await api<GroupDto>('POST', '/api/groups', { name, currency, reminderDays, inviteEmails: emails });
-      qc.setQueryData(['group', group.id], group);
-      await qc.invalidateQueries({ queryKey: ['groups'] });
+      const group = await createGroup.mutateAsync({ name, currency, reminderDays, inviteEmails: emails });
       await navigate(`/groups/${group.id}`, { replace: true });
     } catch (err) {
       setError(errorText(err));

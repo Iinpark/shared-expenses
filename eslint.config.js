@@ -35,6 +35,35 @@ export default tseslint.config(
     languageOptions: { globals: globals.browser },
   },
   {
+    // Один слой запросов (apps/web/src/lib/queries): ключи кэша и инвалидация живут только там,
+    // иначе инвалидация по событиям из потока промахнётся мимо запроса с самодельным ключом.
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@tanstack/react-query',
+              importNames: ['useQuery', 'useQueries', 'useSuspenseQuery', 'useInfiniteQuery', 'useMutation', 'useQueryClient'],
+              message: 'Запросы и кэш — только через хуки из lib/queries.',
+            },
+          ],
+          patterns: [
+            {
+              regex: '(^|/)lib/api(\\.[jt]s)?$|^\\.\\.?/api(\\.[jt]s)?$',
+              message: 'lib/api — только для lib/queries. ApiError и errorText бери из lib/queries.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/web/src/lib/queries/**/*.{ts,tsx}'],
+    rules: { 'no-restricted-imports': 'off' },
+  },
+  {
     files: ['apps/server/**/*.ts'],
     languageOptions: { globals: globals.node },
   },

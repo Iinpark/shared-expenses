@@ -1,6 +1,6 @@
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { AuthFlow } from '../components/AuthFlow.js';
-import { useMe } from '../lib/session.js';
+import { useMe } from '../lib/queries/index.js';
 
 export function LoginPage() {
   const meQuery = useMe();

@@ -1,49 +1,48 @@
-import { currencySymbol, EXPENSE_CATEGORIES, formatAmount, type CurrencyCode, type ExpenseDto, type GroupDto } from '@se/shared';
-import { useQuery } from '@tanstack/react-query';
+import { canEditExpense, currencySymbol, EXPENSE_CATEGORIES, formatAmount, type CurrencyCode, type ExpenseDto, type GroupDto } from '@se/shared';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Icon } from '../components/Icon.js';
-import { api, ApiError } from '../lib/api.js';
 import { copy, fill } from '../lib/copy.js';
-import { CATEGORY_LABELS, money, moneyCur, today, useBalances } from '../lib/expenses.js';
-import { useGroup } from '../lib/groups.js';
-import { useCurrentUser } from '../lib/session.js';
+import { CATEGORY_LABELS, money, moneyCur, today } from '../lib/format.js';
+import { ApiError, useBalances, useCurrentUser, useExpense, useGroup } from '../lib/queries/index.js';
 import { useExpenseDraft, type Draft } from './expense/draft.js';
 import { useExpenseMutations, type Mutations } from './expense/mutations.js';
-import { ConflictNotice, EditPreview } from './expense/Notices.js';
+import { clearDraft } from './expense/draftStore.js';
+import { ConflictSheet, EditPreview, FormNotice, useFormNotice, type VersionView } from './expense/Notices.js';
 import { SplitSection } from './expense/SplitSection.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
 /** M04–M06 (новый расход) и D03 (правка). Маршруты /groups/:id/expenses/new и /groups/:id/expenses/:expenseId. */
 export function ExpensePage() {
   const { id = '', expenseId } = useParams();
+  const me = useCurrentUser();
   const group = useGroup(id);
-  const existing = useQuery({
-    queryKey: ['expense', expenseId],
-    queryFn: () => api<ExpenseDto>('GET', `/api/expenses/${expenseId}`),
-    enabled: !!expenseId,
-    retry: false,
-    // Пока форма открыта, расход не перезапрашиваем: иначе версия тихо обновится под старыми полями
-    // и правка затрёт чужую без 409. Свежие данные — при следующем открытии формы.
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
+  const existing = useExpense(expenseId);
 
   const notFound = (e: unknown) => e instanceof ApiError && e.status === 404;
   if (notFound(group.error) || notFound(existing.error)) return <NotFoundPage />;
   if (!group.data || (expenseId && !existing.data)) return <p className="hint" style={{ padding: 20 }}>Загружаем…</p>;
-  if (group.data.status === 'closed') {
-    return (
-      <div className="solo">
-        <p className="empty__title">Группа закрыта, расходы не изменить.</p>
-        <Link to={`/groups/${id}`} className="btn btn--outline" style={{ marginTop: 16 }}>
-          К группе
-        </Link>
-      </div>
-    );
-  }
+  const blocked = readOnlyReason(group.data, existing.data, me.id);
+  if (blocked) return <ReadOnly groupId={id} text={blocked} />;
   return <ExpenseForm key={existing.data?.id ?? 'new'} group={group.data} expense={existing.data} />;
+}
+
+/** Почему форму не показываем: группа закрыта или расход чужой (править может плативший, автор или создатель группы). */
+function readOnlyReason(g: GroupDto, expense: ExpenseDto | undefined, meId: string): string | null {
+  if (g.status === 'closed') return 'Группа закрыта, расходы не изменить.';
+  if (expense && !canEditExpense(expense, meId, g.ownerId)) return 'Изменить расход может тот, кто платил, кто его внёс, или создатель группы.';
+  return null;
+}
+
+function ReadOnly({ groupId, text }: { groupId: string; text: string }) {
+  return (
+    <div className="solo">
+      <p className="empty__title">{text}</p>
+      <Link to={`/groups/${groupId}`} className="btn btn--outline" style={{ marginTop: 16 }}>
+        К группе
+      </Link>
+    </div>
+  );
 }
 
 function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: ExpenseDto }) {
@@ -51,6 +50,7 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
   const balances = useBalances(g.id);
   const d = useExpenseDraft(g, expense, me.id);
   const m = useExpenseMutations(g, expense);
+  const notice = useFormNotice(g, me.id, expense?.id);
   const canSave = !!d.shares && !d.exactBad && !m.busy;
   const save = (version?: number) => {
     if (d.total !== null) void m.save(d.input(d.total), version);
@@ -59,6 +59,7 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
   return (
     <div className="expense-form">
       <FormHeader g={g} editing={!!expense} />
+      {notice && <FormNotice text={notice} />}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -88,7 +89,15 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
 function FormHeader({ g, editing }: { g: GroupDto; editing: boolean }) {
   return (
     <header className="sheet-head">
-      <Link to={`/groups/${g.id}`} aria-label="Закрыть" className="icon-btn">
+      <Link
+        to={`/groups/${g.id}`}
+        aria-label="Закрыть"
+        className="icon-btn"
+        onClick={() => {
+          // Закрыть крестиком — значит передумать: черновик нового расхода больше не нужен.
+          if (!editing) clearDraft(g.id);
+        }}
+      >
         <Icon name="close" size={24} />
       </Link>
       <div className="sheet-head__title" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
@@ -230,17 +239,52 @@ function submitLabel(editing: boolean, total: number | null, currency: CurrencyC
   return total ? fill(copy.expense.save, { amount: moneyCur(total, currency) }) : 'Сохранить';
 }
 
-function FormFoot(p: { g: GroupDto; d: Draft; m: Mutations; editing: boolean; canSave: boolean; meId: string; onSave: (version?: number) => void }) {
-  const { d, m } = p;
+/** Несохранённая форма как версия расхода для ConflictSheet. */
+function mineVersion(d: Draft): VersionView | null {
+  if (d.total === null) return null;
+  const input = d.input(d.total);
+  return { title: input.title ?? '', amount: d.total, payerId: d.payerId, shareIds: (d.shares ?? []).map((s) => s.userId), spentOn: d.spentOn };
+}
+
+interface FootProps {
+  g: GroupDto;
+  d: Draft;
+  m: Mutations;
+  editing: boolean;
+  canSave: boolean;
+  meId: string;
+  onSave: (version?: number) => void;
+}
+
+/** ConflictSheet поверх формы, если сохранение или удаление вернуло 409. */
+function FormConflict({ g, d, m, meId, onSave }: FootProps) {
   const conflict = m.conflict;
+  if (!conflict) return null;
   const overwrite = () => {
-    if (!conflict?.current) return;
+    if (!conflict.current) return;
     if (conflict.action === 'delete') void m.remove(conflict.current.version);
-    else p.onSave(conflict.current.version);
+    else onSave(conflict.current.version);
   };
   return (
+    <ConflictSheet
+      g={g}
+      current={conflict.current}
+      meId={meId}
+      meGender={g.members.find((x) => x.userId === meId)?.gender ?? null}
+      busy={m.busy}
+      action={conflict.action}
+      mine={conflict.action === 'delete' ? null : mineVersion(d)}
+      onApply={overwrite}
+    />
+  );
+}
+
+function FormFoot(p: FootProps) {
+  const { d, m } = p;
+  const conflict = m.conflict;
+  return (
     <div className="form-foot">
-      {conflict && <ConflictNotice g={p.g} current={conflict.current} meId={p.meId} busy={m.busy} action={conflict.action} onOverwrite={overwrite} />}
+      <FormConflict {...p} />
       {m.error && <p className="form-error">{m.error}</p>}
       <button type="submit" className="btn btn--primary btn--main" disabled={!p.canSave || !!conflict}>
         {submitLabel(p.editing, d.total, d.currency)}

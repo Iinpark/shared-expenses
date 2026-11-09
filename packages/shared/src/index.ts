@@ -6,3 +6,4 @@ export * from './balances.js';
 export * from './money.js';
 export * from './split.js';
 export * from './assert.js';
+export * from './permissions.js';

@@ -5,9 +5,8 @@ const config: KnipConfig = {
   workspaces: {
     '.': {},
     'apps/server': {
-      // pino-pretty подключается логгером по имени строкой (transport target), а @types/ws нужен
-      // только для типов сокета @fastify/websocket — статически knip их не видит.
-      ignoreDependencies: ['pino-pretty', '@types/ws'],
+      // pino-pretty подключается логгером по имени строкой (transport target), статически knip его не видит.
+      ignoreDependencies: ['pino-pretty'],
     },
     'apps/web': {},
     'packages/shared': {},

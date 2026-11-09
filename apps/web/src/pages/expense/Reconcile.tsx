@@ -1,7 +1,7 @@
 import { byGender, currencySymbol, must, parseAmount, type CurrencyCode, type GroupDto, type ShareResult } from '@se/shared';
 import { Icon } from '../../components/Icon.js';
 import { copy, fill } from '../../lib/copy.js';
-import { money } from '../../lib/expenses.js';
+import { money } from '../../lib/format.js';
 import { joinNames, plural } from '../../lib/ru.js';
 import type { Draft } from './draft.js';
 
