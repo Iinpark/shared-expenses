@@ -1,34 +1,41 @@
-import { healthResponseSchema } from '@se/shared';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
+import { ToastProvider } from './components/Toast.js';
+import { useMe } from './lib/session.js';
+import { CreateGroupPage } from './pages/CreateGroupPage.js';
+import { GroupPage } from './pages/GroupPage.js';
+import { GroupsPage } from './pages/GroupsPage.js';
+import { InvitePage } from './pages/InvitePage.js';
+import { LoginPage } from './pages/LoginPage.js';
+import { NotFoundPage } from './pages/NotFoundPage.js';
+import { SettingsPage } from './pages/SettingsPage.js';
 
-async function fetchHealth() {
-  const res = await fetch('/api/health');
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return healthResponseSchema.parse(await res.json());
+/** Пускает только вошедших и представившихся; остальных отправляет на вход и возвращает обратно. */
+function RequireUser({ children }: { children: ReactNode }) {
+  const me = useMe();
+  const location = useLocation();
+  if (me.isPending) return null;
+  if (me.isError) return <p className="hint" style={{ padding: 20 }}>Нет связи с сервером. Обнови страницу чуть позже.</p>;
+  if (!me.data?.name) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
+  return children;
 }
 
-/** Временный экран каркаса: показывает, что клиент видит сервер, базу и WebSocket. */
 export function App() {
-  const health = useQuery({ queryKey: ['health'], queryFn: fetchHealth, refetchInterval: 5000 });
-  const [ws, setWs] = useState<'connecting' | 'open' | 'closed'>('connecting');
-
-  useEffect(() => {
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(`${proto}://${location.host}/ws`);
-    socket.onopen = () => setWs('open');
-    socket.onclose = () => setWs('closed');
-    return () => socket.close();
-  }, []);
-
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 480, margin: '48px auto', padding: '0 16px' }}>
-      <h1>Совместные расходы</h1>
-      <ul>
-        <li>Сервер: {health.isPending ? '…' : health.isError ? 'недоступен' : health.data.status}</li>
-        <li>База: {health.data?.db ?? '…'}</li>
-        <li>WebSocket: {ws}</li>
-      </ul>
-    </main>
+    <BrowserRouter>
+      <ToastProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/j/:token" element={<InvitePage />} />
+          <Route path="/" element={<RequireUser><GroupsPage /></RequireUser>} />
+          <Route path="/groups/new" element={<RequireUser><CreateGroupPage /></RequireUser>} />
+          <Route path="/groups/:id" element={<RequireUser><GroupPage tab="balance" /></RequireUser>} />
+          <Route path="/groups/:id/expenses" element={<RequireUser><GroupPage tab="expenses" /></RequireUser>} />
+          <Route path="/groups/:id/feed" element={<RequireUser><GroupPage tab="feed" /></RequireUser>} />
+          <Route path="/groups/:id/settings" element={<RequireUser><SettingsPage /></RequireUser>} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </ToastProvider>
+    </BrowserRouter>
   );
 }

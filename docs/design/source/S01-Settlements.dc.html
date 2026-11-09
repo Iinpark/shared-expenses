@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Состояния погашений</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E6E8EC}
+a{color:#1B1D22;text-decoration:none}a:hover{color:#000}
+.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width:1780px;height:980px;box-sizing:border-box;padding:48px;background:#E6E8EC;font-family:'Golos Text',system-ui,sans-serif;color:#1B1D22;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:40px;align-items:start">
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:4px;min-height:72px"><h2 style="margin:0;font-size:18px;font-weight:600">Ожидает · вид Гены</h2><p style="margin:0;font-size:15px;line-height:1.45;color:#3A3F49">Гена отметил перевод. Баланс прежний, рядом видно, что часть уже в пути.</p></div>
+<div style="width:390px;background:#F2F3F5;border-radius:16px;overflow:hidden;display:flex;flex-direction:column">
+<div style="padding:28px 20px 20px;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:16px;color:#3A3F49">С тебя</span>
+<span class="n" style="font-size:44px;line-height:1.05;font-weight:700;letter-spacing:-.02em;color:#A3480F">3 200,00 ₽</span>
+<span style="font-size:15px;color:#4F5562">Ане 3 166,66 · Борису 33,34</span>
+</div>
+<div style="margin:0 20px;padding:18px;border:1.5px dashed #6B7180;border-radius:12px;background:#FFFFFF;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+<div style="display:flex;flex-direction:column;gap:4px"><p class="n" style="margin:0;font-size:16px;font-weight:600">Ты отметил 2 000,00 Ане</p><p style="margin:0;font-size:14px;line-height:1.45;color:#4F5562">7 ноября · ждёт подтверждения 1 день. Сумма уменьшится, когда Аня подтвердит.</p></div></div>
+<div class="n" style="padding-top:10px;border-top:1px solid #EAECEF;display:flex;justify-content:space-between;font-size:14px;color:#3A3F49"><span>После подтверждения</span><span style="font-weight:600;color:#A3480F">1 200,00</span></div>
+<button style="height:44px;border-radius:10px;border:1.5px solid #C5C9D1;background:#FFFFFF;font-size:15px;font-weight:500">Отменить отметку</button>
+</div>
+<div style="padding:20px;display:flex;flex-direction:column;gap:8px">
+<span style="font-size:15px;font-weight:600">Осталось отметить</span>
+<div style="background:#FFFFFF;border:1px solid #DEE1E6;border-radius:10px;display:flex;flex-direction:column">
+<div class="n" style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #EAECEF;font-size:15px"><span>Ане</span><span style="display:flex;align-items:center;gap:10px"><span style="font-weight:600">1 166,66</span><a href="M07-Settle.dc.html" style="height:36px;padding:0 12px;border-radius:8px;background:#1B1D22;color:#FFFFFF;display:flex;align-items:center;font-size:14px;font-weight:600">Отметить</a></span></div>
+<div class="n" style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;font-size:15px"><span>Борису</span><span style="display:flex;align-items:center;gap:10px"><span style="font-weight:600">33,34</span><a href="M07-Settle.dc.html" style="height:36px;padding:0 12px;border-radius:8px;background:#1B1D22;color:#FFFFFF;display:flex;align-items:center;font-size:14px;font-weight:600">Отметить</a></span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:4px;min-height:72px"><h2 style="margin:0;font-size:18px;font-weight:600">Ожидает · вид получателя</h2><p style="margin:0;font-size:15px;line-height:1.45;color:#3A3F49">У Ани вопрос с двумя ответами и подсказка, каким станет баланс.</p></div>
+<div style="width:390px;background:#F2F3F5;border-radius:16px;overflow:hidden;display:flex;flex-direction:column">
+<div style="padding:28px 20px 20px;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:16px;color:#3A3F49">Тебе вернут</span>
+<span class="n" style="font-size:44px;line-height:1.05;font-weight:700;letter-spacing:-.02em;color:#1C5DB0">3 166,66 ₽</span>
+<span style="font-size:15px;color:#4F5562">Всё это с Гены.</span>
+</div>
+<div style="margin:0 20px 24px;padding:18px;border:1.5px dashed #6B7180;border-radius:12px;background:#FFFFFF;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+<div style="display:flex;flex-direction:column;gap:4px"><p class="n" style="margin:0;font-size:16px;font-weight:600">Гена отметил перевод 2 000,00 ₽</p><p style="margin:0;font-size:14px;line-height:1.45;color:#4F5562">Пока ты не подтвердишь, в балансе это не учтено.</p></div></div>
+<div class="n" style="padding-top:10px;border-top:1px solid #EAECEF;display:flex;justify-content:space-between;font-size:14px;color:#3A3F49"><span>Если подтвердишь, с Гены останется</span><span style="font-weight:600;color:#1C5DB0">1 166,66</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<button style="height:44px; border:0; border-radius:10px; background:#1B1D22; color:#FFFFFF; font-size:15px; font-weight:600; padding: 0px 12px">Деньги пришли</button>
+<button style="height:44px; border-radius:10px; border:1.5px solid #C5C9D1; background:#FFFFFF; font-size:15px; font-weight:500; padding: 0px 12px">Не пришли</button>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:4px;min-height:72px"><h2 style="margin:0;font-size:18px;font-weight:600">Отклонено · вид Гены</h2><p style="margin:0;font-size:15px;line-height:1.45;color:#3A3F49">Аня сказала, что деньги не пришли. Сумма не изменилась, понятно, что делать дальше.</p></div>
+<div style="width:390px;background:#F2F3F5;border-radius:16px;overflow:hidden;display:flex;flex-direction:column">
+<div style="padding:28px 20px 20px;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:16px;color:#3A3F49">С тебя</span>
+<span class="n" style="font-size:44px;line-height:1.05;font-weight:700;letter-spacing:-.02em;color:#A3480F">3 200,00 ₽</span>
+<span style="font-size:15px;color:#4F5562">Ане 3 166,66 · Борису 33,34</span>
+</div>
+
+<div role="alert" style="margin:0 20px 24px;padding:18px;border:1.5px solid #A3480F;border-radius:12px;background:#FFFFFF;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A3480F" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="8.5"></circle><path d="M9 9l6 6M15 9l-6 6"></path></svg>
+<div style="display:flex;flex-direction:column;gap:4px"><p class="n" style="margin:0;font-size:16px;font-weight:600">Окак. Аня не получила <s style="font-weight:500;color:#6B7180">2 000,00</s></p><p style="margin:0;font-size:14px;line-height:1.45;color:#4F5562">8 ноября. Сумма осталась прежней. Проверь перевод в банке и отметь его снова, когда деньги дойдут.</p></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<a href="M07-Settle.dc.html" style="height:44px;border-radius:10px;background:#1B1D22;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">Отметить снова</a>
+<button style="height:44px;border-radius:10px;border:1.5px solid #C5C9D1;background:#FFFFFF;font-size:15px;font-weight:500">Понятно</button>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:4px;min-height:72px"><h2 style="margin:0;font-size:18px;font-weight:600">Подтверждено · вид Гены</h2><p style="margin:0;font-size:15px;line-height:1.45;color:#3A3F49">Отметка стала сплошной, сумма уменьшилась, переводы пересчитались.</p></div>
+<div style="width:390px;background:#F2F3F5;border-radius:16px;overflow:hidden;display:flex;flex-direction:column">
+<div style="padding:28px 20px 20px;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:16px;color:#3A3F49">С тебя</span>
+<span class="n" style="font-size:44px;line-height:1.05;font-weight:700;letter-spacing:-.02em;color:#A3480F">1 200,00 ₽</span>
+<span class="n" style="font-size:15px;color:#4F5562">было <s>3 200,00</s> · Ане 1 166,66 · Борису 33,34</span>
+</div>
+<div style="margin:0 20px;padding:16px 18px;border:1.5px solid #1B1D22;border-radius:12px;background:#FFFFFF;display:flex;gap:10px">
+<span style="width:22px;height:22px;flex:none;border-radius:50%;background:#1B1D22;color:#FFFFFF;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<div style="display:flex;flex-direction:column;gap:4px"><p class="n" style="margin:0;font-size:16px;font-weight:600">Аня подтвердила 2 000,00</p><p style="margin:0;font-size:14px;color:#4F5562">8 ноября · учтено в балансе</p></div>
+</div>
+<div style="padding:20px 20px 24px;display:flex;flex-direction:column;gap:8px">
+<span style="font-size:15px;font-weight:600">Осталось</span>
+<div style="background:#FFFFFF;border:1px solid #DEE1E6;border-radius:10px">
+<div class="n" style="padding:12px 14px;display:flex;justify-content:space-between;border-bottom:1px solid #EAECEF;font-size:15px"><span>Ане</span><span style="font-weight:600">1 166,66</span></div>
+<div class="n" style="padding:12px 14px;display:flex;justify-content:space-between;font-size:15px"><span>Борису</span><span style="font-weight:600">33,34</span></div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1780,"height":980}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

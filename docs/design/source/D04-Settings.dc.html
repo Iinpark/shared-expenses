@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Настройки группы, компьютер</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F2F3F5}
+a{color:#1B1D22;text-decoration:none}a:hover{color:#000}
+.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+button,input{font:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="min-height:1060px;box-sizing:border-box;background:#F2F3F5;font-family:'Golos Text',system-ui,sans-serif;color:#1B1D22;display:flex;flex-direction:column">
+
+<header style="background:#FFFFFF;border-bottom:1px solid #DEE1E6">
+<div style="max-width:1120px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;gap:12px">
+<a href="D02-Group.dc.html" style="height:44px;display:flex;align-items:center;gap:6px;font-size:15px;font-weight:500"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Поездка в Казань</a>
+</div>
+</header>
+
+<main style="width:100%;max-width:1120px;margin:0 auto;padding:40px 24px 64px;box-sizing:border-box;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+
+<div style="flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:32px">
+<h1 style="margin:0;font-size:32px;font-weight:700;letter-spacing:-.02em">Настройки группы</h1>
+
+<section style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;flex-direction:column;gap:6px"><label for="n" style="font-size:14px;color:#4F5562">Название</label><input id="n" value="Поездка в Казань" style="height:48px;max-width:420px;border:1.5px solid #C5C9D1;border-radius:10px;padding:0 14px;font-size:16px;color:#1B1D22;background:#FFFFFF"></div>
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;color:#4F5562">Валюта</span><span style="display:inline-flex;align-items:center;gap:8px;font-size:16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Рубль, ₽ <span style="font-size:14px;color:#4F5562">· в группе уже есть расходы, валюту не поменять</span></span></div>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label for="d" style="font-size:16px">Напомнить письмом тому, кто не рассчитался за</label><input id="d" class="n" value="7" style="width:56px;height:44px;box-sizing:border-box;border:1.5px solid #C5C9D1;border-radius:10px;text-align:center;font-size:16px;font-weight:600;color:#1B1D22;background:#FFFFFF"><span style="font-size:16px">дней</span></div>
+<p style="margin:-8px 0 0;font-size:14px;color:#4F5562">Не чаще раза в неделю. Пока есть неподтверждённое погашение на всю сумму, письмо не уходит.</p>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:12px;padding-top:28px;border-top:1px solid #DEE1E6">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+<h2 style="margin:0;font-size:20px;font-weight:600">Участники</h2>
+<div style="display:flex;gap:8px"><button style="height:40px;padding:0 14px;border-radius:10px;border:1.5px solid #C5C9D1;background:#FFFFFF;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>Ссылка-приглашение</button><button style="height:40px;padding:0 14px;border-radius:10px;border:1.5px solid #C5C9D1;background:#FFFFFF;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>По почте</button></div>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DEE1E6;border-radius:12px;display:flex;flex-direction:column">
+<div style="min-height:56px;padding:8px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #EAECEF"><span style="width:32px;height:32px;border-radius:50%;background:#DCE0E7;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">А</span><span style="flex:1;font-size:15px">Аня (ты) <span style="color:#4F5562;font-size:14px">· anya@example.com</span></span><span style="font-size:14px;color:#4F5562">создатель</span></div>
+<div style="min-height:56px;padding:8px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #EAECEF"><span style="width:32px;height:32px;border-radius:50%;background:#DCE0E7;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">Б</span><span style="flex:1;font-size:15px">Борис <span style="color:#4F5562;font-size:14px">· boris@example.com</span></span></div>
+<div style="min-height:56px;padding:8px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #EAECEF"><span style="width:32px;height:32px;border-radius:50%;background:#DCE0E7;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">В</span><span style="flex:1;font-size:15px">Вика <span style="color:#4F5562;font-size:14px">· vika@example.com</span></span></div>
+<div style="min-height:56px;padding:8px 16px;display:flex;align-items:center;gap:12px"><span style="width:32px;height:32px;border-radius:50%;background:#DCE0E7;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">Г</span><span style="flex:1;font-size:15px">Гена <span style="color:#4F5562;font-size:14px">· gena@example.com</span></span></div>
+</div>
+<p style="margin:0;font-size:14px;color:#4F5562">Участника с ненулевым балансом удалить нельзя: сначала нужно рассчитаться.</p>
+</section>
+</div>
+
+<section aria-labelledby="close" style="flex:1 1 360px;min-width:0;box-sizing:border-box;background:#FFFFFF;border:1.5px solid #1B1D22;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px">
+<h2 id="close" style="margin:0;font-size:22px;font-weight:700">Закрыть группу?</h2>
+<p style="margin:0;font-size:15px;line-height:1.55;color:#3A3F49">Поездка закончилась. После закрытия всё останется видно, но добавить или изменить расходы и погашения будет нельзя. Открыть снова можно в любой момент.</p>
+<div style="padding:14px;border-radius:10px;background:#FDF3EC;border:1px solid #EBC9B2;display:flex;flex-direction:column;gap:8px">
+<p style="margin:0;font-size:15px;font-weight:600;color:#6E2E07">Ещё не все в расчёте</p>
+<ul class="n" style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:#3A3F49">
+<li>3 перевода на 3 300,00 ₽</li>
+<li>1 погашение ждёт тебя: Гена, 2 000,00</li>
+</ul>
+<p style="margin:0;font-size:14px;line-height:1.5;color:#3A3F49">Закрыть можно и так: остатки попадут в итог. Чтобы потом отметить погашение, группу придётся открыть снова.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:15px">
+<span style="font-weight:600">Что произойдёт</span>
+<span style="color:#3A3F49">Всем 4 участникам уйдёт письмо с итогом и ссылкой на отчёт.</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<a href="D05-Report.dc.html" style="height:48px;border-radius:10px;background:#1B1D22;color:#FFFFFF;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Закрыть и отправить итог</a>
+<a href="D02-Group.dc.html" style="height:48px;border-radius:10px;border:1.5px solid #C5C9D1;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500">Не сейчас</a>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1060}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

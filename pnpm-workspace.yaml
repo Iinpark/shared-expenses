@@ -5,3 +5,6 @@ packages:
 # esbuild ставит нативный бинарник через postinstall (нужен tsx и drizzle-kit)
 allowBuilds:
   esbuild: true
+
+minimumReleaseAgeExclude:
+  - nodemailer@10.4.0
