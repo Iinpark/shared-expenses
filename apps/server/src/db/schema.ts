@@ -215,7 +215,7 @@ export const expenseShares = pgTable(
 /**
  * Что произошло в группе. Пишется в той же транзакции, что и само изменение, поэтому лента
  * никогда не расходится с данными. payload — снимки «до» и «после» (тип GroupEventPayload в @se/shared).
- * После коммита Postgres рассылает NOTIFY, и сервер отправляет событие участникам по WebSocket.
+ * После коммита Postgres рассылает NOTIFY, и сервер отправляет событие участникам в поток SSE.
  */
 export const groupEvents = pgTable(
   'group_events',
@@ -229,7 +229,9 @@ export const groupEvents = pgTable(
       .references(() => users.id),
     type: groupEventTypeEnum('type').notNull(),
     payload: jsonb('payload').notNull(),
-    createdAt: createdAt(),
+    // clock_timestamp(), а не now(): now() — время начала транзакции, и транзакция, долго ждавшая
+    // блокировку, получила бы время раньше уже закоммиченных событий. Курсор досылки съехал бы.
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`clock_timestamp()`),
   },
   (t) => [index('group_events_group_idx').on(t.groupId, t.createdAt)],
 );

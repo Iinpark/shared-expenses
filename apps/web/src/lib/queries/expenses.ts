@@ -45,7 +45,7 @@ function useExpenseMutation<V>(groupId: string, expenseId: string | undefined, r
   return useMutation({
     mutationFn: request,
     onSuccess: async () => {
-      await invalidateGroup(qc, groupId);
+      await invalidateGroup(qc, groupId, 'all');
       qc.removeQueries({ queryKey: qk.expense(expenseId) });
     },
   });

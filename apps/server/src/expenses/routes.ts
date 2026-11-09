@@ -37,8 +37,8 @@ const expenseParams = z.object({ id: z.uuid({ message: 'Расход не най
 const versionQuery = z.object({ version: z.coerce.number().int().positive() });
 
 /**
- * Расходы. Добавлять, править и удалять может любой участник открытой группы:
- * расходы вносит тот, кто платил, или тот, у кого под рукой телефон. Кто что поменял, видно в ленте.
+ * Расходы. Добавлять может любой участник открытой группы, менять и удалять — плательщик, автор
+ * и создатель группы (DECISIONS, раздел 15). Кто что поменял, видно в ленте.
  */
 export function expenseRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/groups/:id/expenses', async (req) => {

@@ -44,9 +44,14 @@ function expenseIdOf(event: GroupEventDto): string | null {
   }
 }
 
-/** Кэш расхода выкидываем, только если его не держит открытая форма: она живёт на своей версии. */
+/**
+ * Кэш расхода выкидываем, только если его не держит открытая форма: она живёт на своей версии.
+ * Открытую форму не перезапрашиваем, но помечаем устаревшей — при следующем открытии придёт свежая версия.
+ */
 function dropExpense(qc: QueryClient, id: string | null) {
-  if (id) qc.removeQueries({ queryKey: qk.expense(id), type: 'inactive' });
+  if (!id) return;
+  qc.removeQueries({ queryKey: qk.expense(id), type: 'inactive' });
+  void qc.invalidateQueries({ queryKey: qk.expense(id), refetchType: 'none' });
 }
 
 /** Пропущено слишком много: перезапросить всё, кроме расходов в открытых формах. */
@@ -54,6 +59,9 @@ function resyncAll(qc: QueryClient) {
   qc.removeQueries({ queryKey: ['expense'], type: 'inactive' });
   void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'expense' });
 }
+
+/** Сколько последних id событий помним, чтобы отбросить повторы при досылке. */
+const SEEN_LIMIT = 500;
 
 interface Handlers {
   onEvent: (event: GroupEventDto) => void;
@@ -70,7 +78,8 @@ interface Handlers {
 function openConnection(h: Handlers): () => void {
   let es: EventSource | null = null;
   let lostAt: number | null = null;
-  let needResync = false;
+  // Первый ready тоже сверяем: между первыми запросами данных и открытием потока могли быть изменения.
+  let needResync = true;
   let offlineTimer: ReturnType<typeof setTimeout> | undefined;
   let reopenTimer: ReturnType<typeof setTimeout> | undefined;
   const seen = new Set<string>();
@@ -80,6 +89,9 @@ function openConnection(h: Handlers): () => void {
     if (lostAt !== null) return;
     const at = Date.now();
     lostAt = at;
+    // Браузер переподключится сам и пришлёт Last-Event-ID, но если событий ещё не было, курсора нет —
+    // тогда после ready перезапросим всё.
+    if (lastId === null) needResync = true;
     offlineTimer = setTimeout(() => {
       h.setStatus({ online: false, freshAt: at });
     }, OFFLINE_AFTER_MS);
@@ -95,6 +107,8 @@ function openConnection(h: Handlers): () => void {
     const event = JSON.parse(msg.data) as GroupEventDto;
     if (seen.has(event.id)) return;
     seen.add(event.id);
+    // id нужны только чтобы отбросить повторы досылки; хранить их весь сеанс незачем.
+    if (seen.size > SEEN_LIMIT) seen.delete(seen.values().next().value ?? '');
     lastId = event.id;
     h.onEvent(event);
   };

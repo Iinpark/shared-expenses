@@ -7,6 +7,8 @@ import { EVENTS_CHANNEL, getEvent, type EventNotice } from '../events/service.js
 /** Открытый поток SSE одного браузера: куда писать события. */
 export interface Subscriber {
   send: (event: GroupEventDto) => void;
+  /** Могли пропустить события: клиенту перезагрузить данные целиком. */
+  resync: () => void;
 }
 
 /**
@@ -24,11 +26,21 @@ export class RealtimeHub {
   private unlisten: (() => Promise<void>) | null = null;
 
   async start(log: { error: (o: unknown, m?: string) => void }): Promise<void> {
-    const sub = await sql.listen(EVENTS_CHANNEL, (raw) => {
-      this.dispatch(raw).catch((err: unknown) => {
-        log.error(err, 'realtime dispatch failed');
-      });
-    });
+    let listening = false;
+    const sub = await sql.listen(
+      EVENTS_CHANNEL,
+      (raw) => {
+        this.dispatch(raw).catch((err: unknown) => {
+          log.error(err, 'realtime dispatch failed');
+        });
+      },
+      () => {
+        // postgres-js сам переподписывается после обрыва соединения с базой, но NOTIFY за время
+        // обрыва потеряны: просим всех подключённых клиентов перезагрузить данные.
+        if (listening) this.resyncAll();
+        listening = true;
+      },
+    );
     this.unlisten = () => sub.unlisten();
   }
 
@@ -47,6 +59,10 @@ export class RealtimeHub {
       set.delete(subscriber);
       if (!set.size) this.subscribers.delete(userId);
     };
+  }
+
+  private resyncAll(): void {
+    for (const set of this.subscribers.values()) for (const s of set) s.resync();
   }
 
   private async dispatch(raw: string): Promise<void> {

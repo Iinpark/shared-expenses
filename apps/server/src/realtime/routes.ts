@@ -11,6 +11,8 @@ const HEARTBEAT_MS = 25_000;
 
 const lastEventId = z.uuid().optional().catch(undefined);
 
+const RESYNC = 'event: resync\ndata: {}\n\n';
+
 const frame = (event: GroupEventDto) => `id: ${event.id}\nevent: group_event\ndata: ${JSON.stringify(event)}\n\n`;
 
 /**
@@ -39,6 +41,7 @@ export function realtimeRoutes(app: FastifyInstance, hub: RealtimeHub): Promise<
 
     // Подписываемся до досылки, а живые события копим, пока она идёт: так между «досланным»
     // и «живым» не будет ни дыры, ни повторов (повторы отсекаются по id).
+    // Повторы возможны только на стыке «досланное ↔ живое», поэтому id помним лишь до конца досылки.
     const sent = new Set<string>();
     let buffer: GroupEventDto[] | null = [];
     const write = (event: GroupEventDto) => {
@@ -51,6 +54,7 @@ export function realtimeRoutes(app: FastifyInstance, hub: RealtimeHub): Promise<
         if (buffer) buffer.push(event);
         else write(event);
       },
+      resync: () => res.write(RESYNC),
     });
     const heartbeat = setInterval(() => res.write(': ping\n\n'), HEARTBEAT_MS);
     req.raw.on('close', () => {
@@ -59,14 +63,21 @@ export function realtimeRoutes(app: FastifyInstance, hub: RealtimeHub): Promise<
     });
 
     res.write('retry: 3000\n\n');
-    if (since) {
-      const missed = await eventsSince(db, user.id, since);
+    // После hijack Fastify уже не ответит ошибкой сам: любой сбой досылки обрабатываем здесь,
+    // иначе поток повис бы — живые события копились бы в буфере, а ready так и не пришёл бы.
+    try {
+      const missed = since ? await eventsSince(db, user.id, since) : [];
       if (missed) missed.forEach(write);
-      else res.write('event: resync\ndata: {}\n\n');
+      else res.write(RESYNC);
+    } catch (err) {
+      req.log.error(err, 'realtime replay failed');
+      res.write(RESYNC);
+    } finally {
+      for (const event of buffer) write(event);
+      buffer = null;
+      sent.clear(); // дальше события идут только вживую, без повторов
+      res.write('event: ready\ndata: {}\n\n');
     }
-    for (const event of buffer) write(event);
-    buffer = null;
-    res.write('event: ready\ndata: {}\n\n');
   });
   return Promise.resolve();
 }

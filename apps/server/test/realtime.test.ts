@@ -173,8 +173,11 @@ describe('живые обновления (SSE)', () => {
 
     const again = await connect(anya, lastSeen);
     await until(() => again.has('ready'));
-    const amounts = again.events().map((e) => (e.payload.type === 'expense_created' ? e.payload.after.amount : null));
-    expect(amounts).toEqual([2000, 3000]);
+    // Досылка идёт с запасом назад (повторы клиент отбрасывает по id), но последнее увиденное не повторяется,
+    // а пропущенное приходит целиком и по порядку.
+    const created = again.events().flatMap((e) => (e.payload.type === 'expense_created' ? [e.payload.after.amount] : []));
+    expect(created.filter((a) => a !== 1000)).toEqual([2000, 3000]);
+    expect(again.events().some((e) => e.id === lastSeen)).toBe(false);
     again.close();
   });
 
@@ -189,7 +192,7 @@ describe('живые обновления (SSE)', () => {
 
     const again = await connectUrl(anya, `/api/events/stream?lastEventId=${lastSeen}`);
     await until(() => again.has('ready'));
-    expect(again.events()).toHaveLength(1);
+    expect(again.events().some((e) => e.payload.type === 'expense_created' && e.payload.after.amount === 2000)).toBe(true);
     again.close();
   });
 

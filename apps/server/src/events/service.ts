@@ -85,6 +85,9 @@ export async function listEvents(tx: Tx, groupId: string, before: string | null,
 /** Сколько пропущенных событий досылаем при переподключении; больше — проще перезагрузить данные целиком. */
 const REPLAY_LIMIT = 200;
 
+/** Насколько назад от последнего увиденного события досылаем «на всякий случай». */
+const REPLAY_OVERLAP = dsql`interval '10 seconds'`;
+
 /**
  * События всех групп пользователя после события afterId — для досылки при переподключении SSE
  * (браузер сам присылает id последнего полученного события в заголовке Last-Event-ID).
@@ -98,7 +101,10 @@ export async function eventsSince(tx: Tx, userId: string, afterId: string): Prom
     .where(
       and(
         dsql`${groupEvents.groupId} in (select group_id from group_members where user_id = ${userId})`,
-        dsql`(${groupEvents.createdAt}, ${groupEvents.id}) > (select created_at, id from group_events where id = ${afterId})`,
+        // Запас назад: событие из другой группы могло записаться чуть раньше, а закоммититься позже
+        // последнего увиденного. Повторы клиент отбрасывает по id.
+        dsql`${groupEvents.createdAt} > (select created_at - ${REPLAY_OVERLAP} from group_events where id = ${afterId})`,
+        dsql`${groupEvents.id} <> ${afterId}`,
       ),
     )
     .orderBy(groupEvents.createdAt, groupEvents.id)

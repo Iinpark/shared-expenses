@@ -16,13 +16,17 @@ export const qk = {
   invite: (token: string, userId: string | null) => ['invite', token, userId] as const,
 };
 
-/** Всё, что зависит от группы: сама группа, список групп, её расходы, балансы и лента. */
-export function invalidateGroup(qc: QueryClient, groupId: string) {
+/**
+ * Всё, что зависит от группы: сама группа, список групп, её расходы, балансы и лента.
+ * refetch: 'all' — после своего сохранения: перезапросить и то, что сейчас не на экране, чтобы экран
+ * группы открылся уже со свежими цифрами и не подсветил собственную правку как чужую.
+ */
+export function invalidateGroup(qc: QueryClient, groupId: string, refetch: 'active' | 'all' = 'active') {
   return Promise.all([
-    qc.invalidateQueries({ queryKey: qk.expenses(groupId) }),
-    qc.invalidateQueries({ queryKey: qk.balances(groupId) }),
-    qc.invalidateQueries({ queryKey: qk.group(groupId) }),
-    qc.invalidateQueries({ queryKey: qk.groups() }),
-    qc.invalidateQueries({ queryKey: qk.events(groupId) }),
+    qc.invalidateQueries({ queryKey: qk.expenses(groupId), refetchType: refetch }),
+    qc.invalidateQueries({ queryKey: qk.balances(groupId), refetchType: refetch }),
+    qc.invalidateQueries({ queryKey: qk.group(groupId), refetchType: refetch }),
+    qc.invalidateQueries({ queryKey: qk.groups(), refetchType: refetch }),
+    qc.invalidateQueries({ queryKey: qk.events(groupId), refetchType: refetch }),
   ]);
 }
