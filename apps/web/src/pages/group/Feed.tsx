@@ -1,19 +1,42 @@
-import { byGender, type ExpenseSnapshot, type Gender, type GroupDto, type GroupEventDto, type GroupEventPayload } from '@se/shared';
+import { byGender, type ExpenseSnapshot, type Gender, type GroupDto, type GroupEventDto, type GroupEventPayload, type SettlementStatus } from '@se/shared';
 import { useEffect, useState, type ReactNode } from 'react';
-import { balanceDeltas, clock, expenseVerb, involves, isExpenseEvent, latest, memberOf, snapshotTitle, type ExpensePayload } from '../../lib/events.js';
+import { Link } from 'react-router';
+import { Icon } from '../../components/Icon.js';
+import {
+  balanceDeltas,
+  clock,
+  expenseVerb,
+  involves,
+  isExpenseEvent,
+  isSettlementEvent,
+  latest,
+  memberOf,
+  settlementPath,
+  snapshotTitle,
+  type ExpensePayload,
+  type SettlementPayload,
+} from '../../lib/events.js';
 import { money, shortDate } from '../../lib/format.js';
-import { errorText, useGroupFeed } from '../../lib/queries/index.js';
+import { errorText, useGroupFeed, useSettlements } from '../../lib/queries/index.js';
 import { dayMonth, joinNames, plural } from '../../lib/ru.js';
 
 /** M03: лента группы. События от новых к старым, новые приходят сверху сами (реалтайм инвалидирует запрос). */
 
-type Filter = 'all' | 'expenses' | 'mine' | 'group';
+type Filter = 'all' | 'expenses' | 'settlements' | 'mine' | 'group';
 const FILTERS: [Filter, string][] = [
   ['all', 'Всё'],
   ['expenses', 'Расходы'],
+  ['settlements', 'Погашения'],
   ['mine', 'Со мной'],
   ['group', 'Группа'],
 ];
+
+/** Касается ли событие человека: его расход или погашение, где он отдаёт или получает. */
+function concerns(p: GroupEventPayload, meId: string): boolean {
+  if (isExpenseEvent(p)) return involves(p, meId);
+  if (isSettlementEvent(p)) return p.settlement.fromId === meId || p.settlement.toId === meId;
+  return false;
+}
 
 function matches(filter: Filter, p: GroupEventPayload, meId: string): boolean {
   switch (filter) {
@@ -21,10 +44,12 @@ function matches(filter: Filter, p: GroupEventPayload, meId: string): boolean {
       return true;
     case 'expenses':
       return isExpenseEvent(p);
+    case 'settlements':
+      return isSettlementEvent(p);
     case 'mine':
-      return isExpenseEvent(p) && involves(p, meId);
+      return concerns(p, meId);
     case 'group':
-      return !isExpenseEvent(p);
+      return !isExpenseEvent(p) && !isSettlementEvent(p);
   }
 }
 
@@ -32,6 +57,8 @@ interface RowCtx {
   g: GroupDto;
   meId: string;
   meGender: Gender | null;
+  /** Текущий статус погашений по id: у отметки в ленте видно, чем всё кончилось. */
+  statuses: ReadonlyMap<string, SettlementStatus>;
 }
 
 // ---------- Что было в ленте раньше: подсветка новых чужих событий ----------
@@ -153,6 +180,78 @@ function ExpenseRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: ExpensePayloa
   }
 }
 
+// ---------- Погашения ----------
+
+const SETTLEMENT_VERBS: Record<SettlementPayload['type'], [string, string, string]> = {
+  settlement_created: ['отметил', 'отметила', 'перевод'],
+  settlement_confirmed: ['подтвердил', 'подтвердила', 'перевод'],
+  settlement_rejected: ['отметил', 'отметила', ', что деньги не пришли'],
+  settlement_cancelled: ['отменил', 'отменила', 'отметку о переводе'],
+};
+
+/** «Гена → тебе», «ты → Аня»: имена без склонения. */
+function pairText(c: RowCtx, fromId: string, toId: string): string {
+  const to = toId === c.meId ? 'тебе' : nameIn(c, toId);
+  return `${nameIn(c, fromId)} → ${to}`;
+}
+
+/** StatusPill под отметкой: пунктир — ждёт, заливка — подтверждено, обводка — не пришли. */
+function StatusPill({ c, p }: { c: RowCtx; p: SettlementPayload }) {
+  const status = c.statuses.get(p.settlement.id);
+  const forMe = p.settlement.toId === c.meId;
+  switch (status) {
+    case 'pending':
+      return forMe ? (
+        <Link to={settlementPath(c.g.id, p.settlement.id)} className="pill pill--pending feed-pill">
+          <Icon name="clock" size={12} /> ждёт твоего подтверждения
+        </Link>
+      ) : (
+        <span className="pill pill--pending feed-pill">
+          <Icon name="clock" size={12} /> ждёт подтверждения
+        </span>
+      );
+    case 'confirmed':
+      return (
+        <span className="pill pill--done feed-pill">
+          <Icon name="check" size={12} /> подтверждено · учтено в балансе
+        </span>
+      );
+    case 'rejected':
+      return <span className="pill pill--rejected feed-pill">деньги не пришли</span>;
+    case 'cancelled':
+      return <span className="pill pill--muted feed-pill">отметка отменена</span>;
+    case undefined:
+      return null;
+  }
+}
+
+function SettlementRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: SettlementPayload }) {
+  const actor = actorOf(c, e);
+  const [m, f, what] = SETTLEMENT_VERBS[p.type];
+  const head = (
+    <>
+      <strong>{actor.name}</strong> {byGender(actor.gender, m, f)}
+      {what.startsWith(',') ? what : ` ${what}`}
+    </>
+  );
+  const amount = money(p.settlement.amount, c.g.currency);
+  const struck = p.type === 'settlement_rejected' || p.type === 'settlement_cancelled';
+  return (
+    <Row
+      head={head}
+      side={struck ? <s className="n struck">{amount}</s> : <span className="n">{amount}</span>}
+      meta={pairText(c, p.settlement.fromId, p.settlement.toId)}
+      extra={
+        <>
+          {p.type === 'settlement_created' && p.settlement.comment && <span className="feed-row__meta">«{p.settlement.comment}»</span>}
+          {p.type === 'settlement_created' && <StatusPill c={c} p={p} />}
+        </>
+      }
+      time={e.createdAt}
+    />
+  );
+}
+
 const reminderText = (v: string | number) => `${String(v)} ${plural(Number(v), 'день', 'дня', 'дней')}`;
 
 function GroupChange({ change }: { change: Extract<GroupEventPayload, { type: 'group_updated' }>['changes'][number] }) {
@@ -166,7 +265,32 @@ function GroupChange({ change }: { change: Extract<GroupEventPayload, { type: 'g
   }
 }
 
-function GroupRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: Extract<GroupEventPayload, { type: 'member_joined' | 'group_updated' }> }) {
+type GroupPayload = Extract<GroupEventPayload, { type: 'member_joined' | 'group_updated' | 'group_closed' | 'group_reopened' }>;
+
+/** «Аня закрыла группу», «Аня открыла группу снова». */
+function StatusRow({ c, e, closed }: { c: RowCtx; e: GroupEventDto; closed: boolean }) {
+  const actor = actorOf(c, e);
+  const head = (
+    <>
+      <strong>{actor.name}</strong> {closed ? `${byGender(actor.gender, 'закрыл', 'закрыла')} группу` : `${byGender(actor.gender, 'открыл', 'открыла')} группу снова`}
+    </>
+  );
+  return (
+    <Row
+      head={head}
+      extra={
+        closed ? (
+          <Link to={`/groups/${c.g.id}/report`} className="feed-row__meta link">
+            Итоговый отчёт
+          </Link>
+        ) : null
+      }
+      time={e.createdAt}
+    />
+  );
+}
+
+function GroupRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: GroupPayload }) {
   if (p.type === 'member_joined') {
     const self = p.userId === c.meId;
     const gender = self ? c.meGender : (memberOf(c.g, p.userId)?.gender ?? null);
@@ -177,6 +301,7 @@ function GroupRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: Extract<GroupEv
     );
     return <Row head={head} time={e.createdAt} />;
   }
+  if (p.type !== 'group_updated') return <StatusRow c={c} e={e} closed={p.type === 'group_closed'} />;
   const actor = actorOf(c, e);
   const only = p.changes.length === 1 ? p.changes[0] : undefined;
   const what = only?.field === 'name' ? byGender(actor.gender, 'переименовал', 'переименовала') + ' группу' : byGender(actor.gender, 'изменил', 'изменила') + ' настройки группы';
@@ -209,11 +334,17 @@ function Row(p: { head: ReactNode; side?: ReactNode; meta?: string; extra?: Reac
   );
 }
 
-function EventRow({ c, e, fresh }: { c: RowCtx; e: GroupEventDto; fresh: boolean }) {
+function EventBody({ c, e }: { c: RowCtx; e: GroupEventDto }) {
   const p = e.payload;
+  if (isExpenseEvent(p)) return <ExpenseRow c={c} e={e} p={p} />;
+  if (isSettlementEvent(p)) return <SettlementRow c={c} e={e} p={p} />;
+  return <GroupRow c={c} e={e} p={p} />;
+}
+
+function EventRow({ c, e, fresh }: { c: RowCtx; e: GroupEventDto; fresh: boolean }) {
   return (
     <li className={`feed-row${fresh ? ' changed-row' : ''}`}>
-      {isExpenseEvent(p) ? <ExpenseRow c={c} e={e} p={p} /> : <GroupRow c={c} e={e} p={p} />}
+      <EventBody c={c} e={e} />
     </li>
   );
 }
@@ -283,11 +414,13 @@ function MoreButton({ feed }: { feed: Feed }) {
 
 export function FeedPanel({ g, meId }: { g: GroupDto; meId: string }) {
   const feed = useGroupFeed(g.id);
+  const settlements = useSettlements(g.id);
   const [filter, setFilter] = useState<Filter>('all');
   const events = feed.data?.pages.flatMap((p) => p.events) ?? [];
   const seenAt = useSeenAt(g.id, events[0]?.createdAt);
 
-  const c: RowCtx = { g, meId, meGender: memberOf(g, meId)?.gender ?? null };
+  const statuses = new Map((settlements.data ?? []).map((s) => [s.id, s.status]));
+  const c: RowCtx = { g, meId, meGender: memberOf(g, meId)?.gender ?? null, statuses };
   const shown = events.filter((e) => matches(filter, e.payload, meId));
   const isFresh = (e: GroupEventDto) => e.actorId !== meId && e.createdAt > seenAt;
 

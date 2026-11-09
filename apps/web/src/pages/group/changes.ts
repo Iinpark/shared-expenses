@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 /**
  * Что поменялось, пока экран группы открыт (D02): ключ → старое значение (null — строка новая).
  * Свои правки делаются в форме, на другом экране, поэтому всё, что меняется здесь, пришло от других.
+ * Исключение — подтверждение погашения на самом экране группы: о нём говорят заранее (expectOwn).
  * Отметки живут, пока человек не ушёл с экрана.
  */
 export type Marks = ReadonlyMap<string, number | null>;
@@ -44,14 +45,25 @@ function nextMarks(marks: Marks, prev: ReadonlyMap<string, number>, cur: Readonl
 
 const NO_MARKS: Marks = new Map();
 
-export function useChangeMarks(groupId: string, meId: string, balances: BalancesDto, expenses: ExpenseDto[]): Marks {
+export interface ChangeMarks {
+  marks: Marks;
+  /**
+   * Следующее изменение цифр — своё (например, подтверждение погашения прямо на экране группы):
+   * не подсвечивать его как чужое. false — своё действие не удалось, ждать больше нечего.
+   */
+  expectOwn: (on: boolean) => void;
+}
+
+export function useChangeMarks(groupId: string, meId: string, balances: BalancesDto, expenses: ExpenseDto[]): ChangeMarks {
   const values = useMemo(() => valuesOf(meId, balances, expenses), [meId, balances, expenses]);
   const [seen, setSeen] = useState({ groupId, values });
   const [marks, setMarks] = useState(NO_MARKS);
+  const [own, setOwn] = useState(false);
   if (seen.values !== values) {
     // Подстройка состояния под новые данные прямо в рендере — так React советует вместо эффекта.
     setSeen({ groupId, values });
-    setMarks(seen.groupId === groupId ? nextMarks(marks, seen.values, values) : NO_MARKS);
+    if (own) setOwn(false);
+    else setMarks(seen.groupId === groupId ? nextMarks(marks, seen.values, values) : NO_MARKS);
   }
-  return marks;
+  return { marks, expectOwn: setOwn };
 }

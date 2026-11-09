@@ -185,7 +185,20 @@ export interface ExpenseDto {
   createdAt: string;
   updatedBy: string;
   updatedAt: string;
+  /** Файл чека, если приложен. Сам файл: GET /api/expenses/:id/receipt. */
+  receipt: ReceiptDto | null;
 }
+
+export interface ReceiptDto {
+  name: string;
+  type: ReceiptType;
+  size: number;
+}
+
+/** Какие чеки принимаем: фото и PDF. Проверяется по содержимому файла, не по расширению. */
+export const RECEIPT_TYPES = ['image/jpeg', 'image/png', 'application/pdf'] as const;
+export type ReceiptType = (typeof RECEIPT_TYPES)[number];
+export const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
 
 export interface BalancesDto {
   /** В порядке вступления. Плюс — участнику вернут, минус — с него. */
@@ -219,7 +232,18 @@ export type GroupEventPayload =
   | { type: 'expense_updated'; before: ExpenseSnapshot; after: ExpenseSnapshot }
   | { type: 'expense_deleted'; before: ExpenseSnapshot }
   | { type: 'member_joined'; userId: string; name: string }
-  | { type: 'group_updated'; changes: { field: 'name' | 'currency' | 'reminderDays'; from: string | number; to: string | number }[] };
+  | { type: 'group_updated'; changes: { field: 'name' | 'currency' | 'reminderDays'; from: string | number; to: string | number }[] }
+  | { type: 'settlement_created' | 'settlement_confirmed' | 'settlement_rejected' | 'settlement_cancelled'; settlement: SettlementSnapshot }
+  | { type: 'group_closed' | 'group_reopened' };
+
+/** Погашение в событии ленты. */
+export interface SettlementSnapshot {
+  id: string;
+  fromId: string;
+  toId: string;
+  amount: number;
+  comment: string | null;
+}
 
 export type GroupEventType = GroupEventPayload['type'];
 
@@ -245,3 +269,58 @@ export interface GroupEventsPage {
  * ready — досылка после переподключения закончена.
  */
 export const SSE_EVENTS = { groupEvent: 'group_event', resync: 'resync', ready: 'ready' } as const;
+
+// ---------- Погашения ----------
+
+export const createSettlementSchema = z.object({
+  toId: z.uuid({ message: 'Неизвестный участник' }),
+  amount: z.number().int().positive('Сумма должна быть больше нуля').max(MAX_AMOUNT, 'Слишком большая сумма'),
+  comment: z.string().trim().max(300, 'Слишком длинный комментарий').nullable().default(null),
+});
+export type CreateSettlementInput = z.input<typeof createSettlementSchema>;
+
+export type SettlementStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
+
+export interface SettlementDto {
+  id: string;
+  groupId: string;
+  fromId: string;
+  toId: string;
+  amount: number;
+  comment: string | null;
+  /** pending — отмечено должником, ждёт получателя; в баланс идёт только confirmed. */
+  status: SettlementStatus;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+// ---------- Итоговый отчёт (D05) и закрытие группы ----------
+
+export interface ReportMemberDto {
+  userId: string;
+  name: string;
+  /** Сколько заплатил за всех. */
+  paid: number;
+  /** Сумма его долей. */
+  share: number;
+  /** Подтверждённые погашения: отдал (+) минус получил (−). */
+  settled: number;
+  /** Итог: paid − share + settled. 0 — в расчёте. */
+  balance: number;
+}
+
+export interface GroupReportDto {
+  groupId: string;
+  name: string;
+  currency: string;
+  status: GroupStatus;
+  closedAt: string | null;
+  /** Даты первого и последнего расхода (YYYY-MM-DD), если расходы есть. */
+  period: { from: string; to: string } | null;
+  totalSpent: number;
+  members: ReportMemberDto[];
+  /** Погашения: подтверждённые и ещё ожидающие (в итог не входят). */
+  settlements: SettlementDto[];
+  /** Чтобы рассчитаться окончательно: оставшиеся переводы. */
+  transfers: Transfer[];
+}

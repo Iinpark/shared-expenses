@@ -1,10 +1,11 @@
-import { must, type BalancesDto, type ExpenseDto, type SplitInput } from '@se/shared';
-import { KAZAN_BALANCES_AFTER_EXPENSES, KAZAN_EXPENSES, KAZAN_MEMBERS, type KazanMember } from '@se/shared/fixtures/kazan';
+import { must } from '@se/shared';
+import { KAZAN_BALANCES_AFTER_EXPENSES, KAZAN_EXPENSES } from '@se/shared/fixtures/kazan';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { db, sql } from '../src/db/client.js';
 import { groups } from '../src/db/schema.js';
-import { balancesOf as parseBalances, conflictOf, errorOf, expenseOf, expensesOf, groupOf, groupsOf, login, makeApp, meOf, resetDb } from './helpers.js';
+import { conflictOf, errorOf, expenseOf, expensesOf, groupOf, groupsOf, login, makeApp, meOf, resetDb } from './helpers.js';
+import { kazanKit } from './kazan.js';
 
 const app = await makeApp();
 afterAll(async () => {
@@ -13,52 +14,7 @@ afterAll(async () => {
 });
 beforeEach(resetDb);
 
-type Cookie = string;
-const req = (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', cookie: Cookie, url: string, payload?: object) =>
-  app.inject({ method, url, headers: { cookie }, payload });
-
-const NAMES: Record<KazanMember, string> = { anya: 'Аня', boris: 'Борис', vika: 'Вика', gena: 'Гена' };
-
-/** Группа «Поездка в Казань»: Аня создаёт, остальные вступают по ссылке в порядке Борис, Вика, Гена. */
-async function kazan() {
-  const cookies = {} as Record<KazanMember, Cookie>;
-  const ids = {} as Record<KazanMember, string>;
-  for (const m of KAZAN_MEMBERS) cookies[m] = await login(app, `${m}@example.com`, NAMES[m]);
-  const group = groupOf(await req('POST', cookies.anya, '/api/groups', { name: 'Поездка в Казань', currency: 'RUB', reminderDays: 7 }));
-  for (const m of KAZAN_MEMBERS.slice(1)) await req('POST', cookies[m], `/api/invites/${group.inviteToken}/accept`);
-  const full = groupOf(await req('GET', cookies.anya, `/api/groups/${group.id}`));
-  for (const member of full.members) ids[must(KAZAN_MEMBERS.find((m) => NAMES[m] === member.name))] = member.userId;
-  return { groupId: group.id, cookies, ids };
-}
-
-type Ids = Record<KazanMember, string>;
-
-/** Переводит деление из фикстуры (имена) в запрос API (id пользователей). */
-function splitFor(split: SplitInput, ids: Ids): SplitInput {
-  const id = (name: string) => ids[name as KazanMember];
-  if (split.mode === 'equal') return { mode: 'equal', userIds: split.userIds.map(id) };
-  if (split.mode === 'shares') return { mode: 'shares', shares: split.shares.map((s) => ({ ...s, userId: id(s.userId) })) };
-  return { mode: 'exact', shares: split.shares.map((s) => ({ ...s, userId: id(s.userId) })) };
-}
-
-const input = (ids: Ids, i: number, patch: object = {}) => {
-  const e = must(KAZAN_EXPENSES[i]);
-  return { amount: e.amount, title: e.title, category: 'other', payerId: ids[e.payer], spentOn: '2026-10-16', split: splitFor(e.split, ids), ...patch };
-};
-
-async function addAll(groupId: string, cookies: Record<KazanMember, Cookie>, ids: Ids): Promise<ExpenseDto[]> {
-  const out: ExpenseDto[] = [];
-  for (let i = 0; i < KAZAN_EXPENSES.length; i++) {
-    const res = await req('POST', cookies[must(KAZAN_EXPENSES[i]).payer], `/api/groups/${groupId}/expenses`, input(ids, i));
-    expect(res.statusCode, res.body).toBe(201);
-    out.push(expenseOf(res));
-  }
-  return out;
-}
-
-const balancesOf = async (cookie: Cookie, groupId: string) => parseBalances(await req('GET', cookie, `/api/groups/${groupId}/balances`));
-const byName = (b: BalancesDto, ids: Ids) =>
-  Object.fromEntries(b.balances.map((x) => [must(KAZAN_MEMBERS.find((m) => ids[m] === x.userId)), x.amount]));
+const { req, kazan, splitFor, input, addAll, balancesOf, byName } = kazanKit(app);
 
 describe('расходы и балансы', () => {
   it('«Поездка в Казань»: четыре расхода дают балансы и три перевода из брифа', async () => {

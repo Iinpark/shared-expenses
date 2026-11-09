@@ -1,16 +1,21 @@
-import { byGender, canEditExpense, currencySymbol, naiveTransferCount, type BalancesDto, type CurrencyCode, type ExpenseDto, type GroupDto, type MemberDto, type Transfer } from '@se/shared';
-import type { ReactNode } from 'react';
+import { byGender, canEditExpense, currencySymbol, naiveTransferCount, type BalancesDto, type CurrencyCode, type ExpenseDto, type GroupDto, type MemberDto, type SettlementDto, type Transfer } from '@se/shared';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Link, NavLink, useParams } from 'react-router';
 import { Avatar } from '../components/Avatar.js';
+import { ClosedBanner } from '../components/ClosedBanner.js';
 import { Icon } from '../components/Icon.js';
+import { ReceiptMark } from '../components/ReceiptMark.js';
 import { useToast } from '../components/Toast.js';
 import { copy, fill } from '../lib/copy.js';
 import { CATEGORY_LABELS, countGenitive, inviteLink, money, moneyCur, shortDate, splitLabel } from '../lib/format.js';
 import { clock } from '../lib/events.js';
-import { ApiError, useBalances, useCurrentUser, useExpenses, useGroup, useRealtimeStatus } from '../lib/queries/index.js';
-import { dayMonth, joinNames, plural } from '../lib/ru.js';
+import { ApiError, useBalances, useCurrentUser, useExpenses, useGroup, useRealtimeStatus, useSettlements } from '../lib/queries/index.js';
+import { allowedTo, pendingFrom } from '../lib/settlements.js';
+import { joinNames, plural } from '../lib/ru.js';
 import { markKey, useChangeMarks, type Marks } from './group/changes.js';
 import { FeedPanel } from './group/Feed.js';
+import { hasOutgoingPending, SettlementCards } from './group/SettlementCards.js';
+import { SettleSheet, type MarkRequest } from './group/SettleSheet.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
 type Tab = 'balance' | 'expenses' | 'feed';
@@ -24,23 +29,31 @@ export function GroupPage({ tab }: { tab: Tab }) {
   const group = useGroup(id);
   const expenses = useExpenses(id);
   const balances = useBalances(id);
+  const settlements = useSettlements(id);
   const me = useCurrentUser();
 
   if (group.error instanceof ApiError && group.error.status === 404) return <NotFoundPage />;
   if (!group.data || !expenses.data || !balances.data) return <p className="hint" style={{ padding: 20 }}>Загружаем…</p>;
-  return <GroupView tab={tab} data={{ g: group.data, meId: me.id, expenses: expenses.data, balances: balances.data }} />;
+  const data = { g: group.data, meId: me.id, expenses: expenses.data, balances: balances.data, settlements: settlements.data ?? NO_SETTLEMENTS };
+  return <GroupView tab={tab} data={data} />;
 }
 
-function GroupView({ tab, data }: { tab: Tab; data: Omit<Ctx, 'marks'> }) {
+const NO_SETTLEMENTS: SettlementDto[] = [];
+
+function GroupView({ tab, data }: { tab: Tab; data: Omit<Ctx, 'marks' | 'onMark' | 'expectOwn'> }) {
   const { g } = data;
-  const marks = useChangeMarks(g.id, data.meId, data.balances, data.expenses);
+  const { marks, expectOwn } = useChangeMarks(g.id, data.meId, data.balances, data.expenses);
   const { online, freshAt } = useRealtimeStatus();
-  const ctx: Ctx = { ...data, marks };
+  const [marking, setMarking] = useState<MarkRequest | null>(null);
+  const closeMark = useCallback(() => {
+    setMarking(null);
+  }, []);
+  const ctx: Ctx = { ...data, marks, onMark: setMarking, expectOwn };
   const open = g.status === 'open';
   return (
     <div className={`page${online ? '' : ' is-stale'}`}>
       <GroupHeader g={g} isOwner={g.ownerId === ctx.meId} tab={tab} />
-      {!open && <ClosedBanner g={g} />}
+      {!open && <ClosedBanner g={g} isOwner={g.ownerId === ctx.meId} reportLink />}
       {!online && <OfflineBanner freshAt={freshAt} />}
       {open && (
         <div className="group-body desktop-only add-row">
@@ -48,11 +61,16 @@ function GroupView({ tab, data }: { tab: Tab; data: Omit<Ctx, 'marks'> }) {
         </div>
       )}
       <GroupContent tab={tab} ctx={ctx} />
-      {open && (
-        <div className="add-bar mobile-only">
+      {marking && open && <SettleSheet g={g} meId={ctx.meId} balances={ctx.balances} settlements={ctx.settlements} request={marking} onClose={closeMark} />}
+      <div className="add-bar mobile-only">
+        {open ? (
           <AddButton g={g} online={online} main />
-        </div>
-      )}
+        ) : (
+          <Link to={`/groups/${g.id}/report`} className="btn btn--outline btn--main">
+            Итоговый отчёт
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
@@ -133,15 +151,6 @@ function GroupHeader({ g, isOwner, tab }: { g: GroupDto; isOwner: boolean; tab: 
   );
 }
 
-function ClosedBanner({ g }: { g: GroupDto }) {
-  return (
-    <div className="banner">
-      <Icon name="lock" size={18} />
-      {fill(copy.group.closedBanner, { date: g.closedAt ? dayMonth(g.closedAt) : '' })}
-    </div>
-  );
-}
-
 function GroupContent({ tab, ctx }: { tab: Tab; ctx: Ctx }) {
   if (ctx.expenses.length === 0) {
     return (
@@ -165,7 +174,11 @@ interface Ctx {
   meId: string;
   expenses: ExpenseDto[];
   balances: BalancesDto;
+  settlements: SettlementDto[];
   marks: Marks;
+  /** Открыть M07 «Отметить перевод». */
+  onMark: (r: MarkRequest) => void;
+  expectOwn: (on: boolean) => void;
 }
 
 /** Amount с подсветкой changed и зачёркнутым старым значением, если число поменялось, пока экран открыт. */
@@ -193,6 +206,7 @@ function BalancePanel(ctx: Ctx) {
   return (
     <div className="balance-panel">
       <BalanceHero {...ctx} />
+      <SettlementCards c={ctx} />
       {ctx.balances.transfers.length > 0 && <TransfersSection {...ctx} />}
       <BalancesSection {...ctx} />
       <section className="panel-section mobile-only">
@@ -250,7 +264,32 @@ function BalanceHero(ctx: Ctx) {
   );
 }
 
-function TransfersSection({ g, meId, balances }: Ctx) {
+/** «Отметить» у строки «ты → Аня» и пунктирная пометка, сколько уже отмечено и ждёт подтверждения. */
+function TransferSide(ctx: Ctx & { t: Transfer }) {
+  const { g, meId, t } = ctx;
+  if (t.fromId !== meId) return null;
+  const marked = pendingFrom(ctx.settlements, meId, t.toId);
+  const canMark = g.status === 'open' && !hasOutgoingPending(ctx) && allowedTo(ctx.balances, ctx.settlements, meId, t.toId) > 0;
+  return (
+    <>
+      {marked > 0 && <span className="pill pill--pending n">отмечено {money(marked, g.currency)}</span>}
+      {canMark && (
+        <button
+          type="button"
+          className="btn btn--primary btn--xs"
+          onClick={() => {
+            ctx.onMark({ toId: t.toId });
+          }}
+        >
+          Отметить
+        </button>
+      )}
+    </>
+  );
+}
+
+function TransfersSection(ctx: Ctx) {
+  const { g, meId, balances } = ctx;
   const count = balances.transfers.length;
   const people = balances.balances.filter((b) => b.amount !== 0).length;
   const amountClass = (t: Transfer) => (t.toId === meId ? ' plus' : t.fromId === meId ? ' minus' : '');
@@ -275,6 +314,7 @@ function TransfersSection({ g, meId, balances }: Ctx) {
               </span>
             </span>
             <span className={`n transfer__amount${amountClass(t)}`}>{money(t.amount, g.currency)}</span>
+            <TransferSide {...ctx} t={t} />
           </div>
         ))}
       </div>
@@ -348,7 +388,15 @@ function ExpenseRow({ e, g, meId, marks }: { e: ExpenseDto; g: GroupDto; meId: s
     <>
       <div className="row__main">
         <span className="row__title">{e.title || CATEGORY_LABELS[e.category]}</span>
-        <span className="row__meta">{expenseMeta(e, g, meId)}</span>
+        <span className="row__meta">
+          {expenseMeta(e, g, meId)}
+          {e.receipt && (
+            <>
+              {' · '}
+              <ReceiptMark expenseId={e.id} link={!editable(e, g, meId)} />
+            </>
+          )}
+        </span>
       </div>
       <div className="expense-row__side">
         <span className="n expense-row__amount">
@@ -414,6 +462,12 @@ function ExpensesPanel({ g, meId, expenses, balances, marks }: Ctx) {
                     <span className="hint-sm" style={{ display: 'block' }}>
                       {CATEGORY_LABELS[e.category].toLowerCase()} · {shortDate(e.spentOn)}
                       {e.version > 1 && ` · изменён ${shortDate(e.updatedAt)}`}
+                      {e.receipt && (
+                        <>
+                          {' · '}
+                          <ReceiptMark expenseId={e.id} />
+                        </>
+                      )}
                     </span>
                   </td>
                   <td>{e.payerId === meId ? 'Ты' : nameOf(g, e.payerId)}</td>

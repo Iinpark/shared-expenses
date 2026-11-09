@@ -12,12 +12,14 @@ export const qk = {
   balances: (groupId: string) => ['balances', groupId] as const,
   expense: (id: string | undefined) => ['expense', id] as const,
   events: (groupId: string) => ['events', groupId] as const,
+  settlements: (groupId: string) => ['settlements', groupId] as const,
+  report: (groupId: string) => ['report', groupId] as const,
   // Превью зависит от того, кто смотрит (alreadyMember), поэтому в ключе есть пользователь.
   invite: (token: string, userId: string | null) => ['invite', token, userId] as const,
 };
 
 /**
- * Всё, что зависит от группы: сама группа, список групп, её расходы, балансы и лента.
+ * Всё, что зависит от группы: сама группа, список групп, её расходы, балансы, погашения, лента и итоговый отчёт.
  * refetch: 'all' — после своего сохранения: перезапросить и то, что сейчас не на экране, чтобы экран
  * группы открылся уже со свежими цифрами и не подсветил собственную правку как чужую.
  */
@@ -28,5 +30,7 @@ export function invalidateGroup(qc: QueryClient, groupId: string, refetch: 'acti
     qc.invalidateQueries({ queryKey: qk.group(groupId), refetchType: refetch }),
     qc.invalidateQueries({ queryKey: qk.groups(), refetchType: refetch }),
     qc.invalidateQueries({ queryKey: qk.events(groupId), refetchType: refetch }),
+    qc.invalidateQueries({ queryKey: qk.settlements(groupId), refetchType: refetch }),
+    qc.invalidateQueries({ queryKey: qk.report(groupId), refetchType: refetch }),
   ]);
 }

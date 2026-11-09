@@ -6,6 +6,7 @@ import {
   type BalancesDto,
   type ExpenseDto,
   type ExpenseShareDto,
+  type ReceiptDto,
   type expenseInputSchema } from '@se/shared';
 import { and, asc, desc, eq, inArray, isNull, sql as dsql } from 'drizzle-orm';
 import type { z } from 'zod';
@@ -70,6 +71,10 @@ function toDto(e: ExpenseRow, shares: ExpenseShareDto[]): ExpenseDto {
     createdAt: e.createdAt.toISOString(),
     updatedBy: e.updatedBy,
     updatedAt: e.updatedAt.toISOString(),
+    receipt:
+      e.receiptFile && e.receiptName && e.receiptType && e.receiptSize !== null
+        ? { name: e.receiptName, type: e.receiptType as ReceiptDto['type'], size: e.receiptSize }
+        : null,
   };
 }
 
@@ -192,20 +197,34 @@ export async function updateExpense(
   return after;
 }
 
-/** Удаление (мягкое). Тоже по версии: нельзя удалить расход, который кто-то только что поменял, не увидев правку. */
-export async function deleteExpense(tx: Tx, expenseId: string, userId: string, version: number) {
+/**
+ * Удаление (мягкое). Тоже по версии: нельзя удалить расход, который кто-то только что поменял, не увидев правку.
+ * Возвращает имя файла чека, который больше не нужен: вызывающий удалит его с диска после коммита.
+ */
+export async function deleteExpense(tx: Tx, expenseId: string, userId: string, version: number): Promise<string | null> {
+  const [current] = await tx.select({ receiptFile: expenses.receiptFile }).from(expenses).where(eq(expenses.id, expenseId));
   const [row] = await tx
     .update(expenses)
-    .set({ deletedAt: new Date(), updatedBy: userId, updatedAt: new Date(), version: dsql`${expenses.version} + 1` })
+    .set({
+      deletedAt: new Date(),
+      updatedBy: userId,
+      updatedAt: new Date(),
+      version: dsql`${expenses.version} + 1`,
+      receiptFile: null,
+      receiptName: null,
+      receiptType: null,
+      receiptSize: null,
+    })
     .where(and(eq(expenses.id, expenseId), eq(expenses.version, version), isNull(expenses.deletedAt)))
     .returning();
   if (!row) throw await versionConflict(tx, expenseId);
   // Доли при мягком удалении остаются в базе, поэтому снимок полный.
   await recordEvent(tx, row.groupId, userId, { type: 'expense_deleted', before: snapshot(await expenseDto(tx, row)) });
+  return current?.receiptFile ?? null;
 }
 
 /**
- * Балансы участников групп: заплатил за всех минус сумма своих долей.
+ * Балансы участников групп: заплатил за всех минус сумма своих долей, плюс подтверждённые погашения.
  * Считаются каждый раз из расходов (решение 4 в DECISIONS), в базе не хранятся.
  * Возвращает groupId → (userId → баланс); участники без расходов имеют 0.
  */
@@ -230,6 +249,13 @@ export async function balancesByGroup(tx: Tx, groupIds: string[]): Promise<Map<s
       select e.group_id, s.user_id, -s.amount, null
         from expense_shares s join expenses e on e.id = s.expense_id
        where e.group_id in (${ids}) and e.deleted_at is null
+      union all
+      -- Подтверждённое погашение: отдавшему с него меньше (+), получившему вернут меньше (−).
+      select st.group_id, st.from_id, st.amount, null
+        from settlements st where st.group_id in (${ids}) and st.status = 'confirmed'
+      union all
+      select st.group_id, st.to_id, -st.amount, null
+        from settlements st where st.group_id in (${ids}) and st.status = 'confirmed'
     )
     select group_id, user_id, sum(amount)::text as balance
       from parts

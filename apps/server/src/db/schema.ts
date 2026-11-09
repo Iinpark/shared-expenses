@@ -29,7 +29,14 @@ export const groupEventTypeEnum = pgEnum('group_event_type', [
   'expense_deleted',
   'member_joined',
   'group_updated',
+  'settlement_created',
+  'settlement_confirmed',
+  'settlement_rejected',
+  'settlement_cancelled',
+  'group_closed',
+  'group_reopened',
 ]);
+export const settlementStatusEnum = pgEnum('settlement_status', ['pending', 'confirmed', 'rejected', 'cancelled']);
 export const splitModeEnum = pgEnum('split_mode', ['equal', 'shares', 'exact']);
 
 /** Деньги: целые минимальные единицы валюты. bigint в базе, number в коде (до 2^53 точно). */
@@ -107,6 +114,10 @@ export const groupMembers = pgTable(
       .references(() => users.id),
     joinOrder: integer('join_order').notNull(),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+    /** С какого момента баланс участника в минусе (null — не в минусе). Ведёт фоновая проверка напоминаний. */
+    debtSince: timestamp('debt_since', { withTimezone: true }),
+    /** Когда последний раз отправили напоминание: не чаще раза в неделю. */
+    lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
   },
   (t) => [
     primaryKey({ columns: [t.groupId, t.userId] }),
@@ -179,6 +190,11 @@ export const expenses = pgTable(
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    /** Файл чека: имя файла в папке загрузок (случайное), исходное имя, тип и размер. */
+    receiptFile: text('receipt_file'),
+    receiptName: text('receipt_name'),
+    receiptType: text('receipt_type'),
+    receiptSize: integer('receipt_size'),
   },
   (t) => [
     check('expenses_amount_positive', sql`${t.amount} > 0`),
@@ -207,6 +223,38 @@ export const expenseShares = pgTable(
     primaryKey({ columns: [t.expenseId, t.userId] }),
     index('expense_shares_user_idx').on(t.userId),
     check('expense_shares_amount_nonneg', sql`${t.amount} >= 0`),
+  ],
+);
+
+// ---------- Погашения ----------
+
+/**
+ * Погашение: должник отметил, что передал деньги получателю. В баланс идёт только после подтверждения
+ * получателем (status = confirmed). Отклонённые и отменённые остаются для ленты и истории.
+ */
+export const settlements = pgTable(
+  'settlements',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    groupId: uuid('group_id')
+      .notNull()
+      .references(() => groups.id, { onDelete: 'cascade' }),
+    fromId: uuid('from_id')
+      .notNull()
+      .references(() => users.id),
+    toId: uuid('to_id')
+      .notNull()
+      .references(() => users.id),
+    amount: money('amount').notNull(),
+    comment: text('comment'),
+    status: settlementStatusEnum('status').notNull().default('pending'),
+    createdAt: createdAt(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (t) => [
+    check('settlements_amount_positive', sql`${t.amount} > 0`),
+    check('settlements_not_self', sql`${t.fromId} <> ${t.toId}`),
+    index('settlements_group_idx').on(t.groupId, t.status),
   ],
 );
 

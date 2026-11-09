@@ -1462,9 +1462,723 @@ body:has(.sheet-overlay) .toast--live {
   margin: 16px var(--gutter) 0;
 }
 
+/* ---------- Погашения: M07, M08, S01 ---------- */
+
+.btn--xs {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+/** StatusPill: заливка с галочкой — подтверждено, обводка minus — не пришли. */
+.pill--done {
+  background: var(--ink);
+  border: 1.5px solid var(--ink);
+  color: #fff;
+}
+.pill--rejected {
+  border: 1.5px solid var(--minus);
+  color: var(--minus);
+}
+.pill--muted {
+  border: 1.5px solid var(--line);
+  color: var(--ink-4);
+}
+.feed-pill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+a.feed-pill:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.transfer .pill {
+  flex: none;
+}
+
+/** PendingCard и карточки решений под героем баланса. */
+.settle-cards {
+  padding: 12px var(--gutter) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.settle-card {
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.settle-card--pending {
+  border: 1.5px dashed var(--muted);
+}
+.settle-card--rejected {
+  border: 1.5px solid var(--minus);
+}
+.settle-card--rejected .settle-card__top > svg {
+  color: var(--minus);
+}
+.settle-card--confirmed {
+  border: 1.5px solid var(--ink);
+  padding: 16px 18px;
+}
+.settle-card__top {
+  display: flex;
+  gap: 10px;
+}
+.settle-card__top > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.settle-card__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.settle-card__title {
+  font-size: 16px;
+  font-weight: 600;
+  white-space: normal;
+}
+.settle-card__title .struck {
+  font-weight: 500;
+}
+.settle-card__sub {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.settle-card__comment {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.settle-card__line {
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--ink-2);
+  white-space: normal;
+}
+.settle-card__line strong {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.settle-card__btns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+.settle-card__btns .btn,
+.settle-card__wide {
+  height: 44px;
+  padding: 0 12px;
+}
+.settle-card__done {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.settle-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+.settle-left__title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.settle-left__list {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.settle-left__row {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.settle-left__row:last-child {
+  border-bottom: 0;
+}
+.settle-left__side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/** M07: шит «Отметить перевод». */
+.settle-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 10px var(--gutter) calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.settle-sheet__grip {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--control-border);
+}
+.settle-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.settle-sheet__title {
+  font-size: 22px;
+  font-weight: 700;
+}
+.settle-sheet__close {
+  margin-right: -10px;
+}
+.settle-sheet__owe {
+  margin-top: -10px;
+  font-size: 15px;
+  color: var(--ink-3);
+}
+.settle-sheet__owe .minus {
+  font-weight: 600;
+}
+.settle-sheet__intro {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.settle-sheet__to {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.settle-sheet__to [aria-checked='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.settle-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settle-amount__input {
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  padding: 2px 0 8px;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: transparent;
+  outline: none;
+}
+.settle-amount__input[aria-invalid='true'] {
+  border-bottom-color: var(--minus);
+}
+.settle-amount__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.settle-amount__quick .filter-chip {
+  font-size: 14px;
+  padding: 0 12px;
+}
+.settle-summary {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 0;
+  font-size: 15px;
+  white-space: normal;
+}
+.settle-summary > span:nth-child(odd) {
+  color: var(--ink-2);
+}
+.settle-summary > span:nth-child(even) {
+  padding-left: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+.settle-summary__total {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-weight: 600;
+}
+strong.settle-summary__total:last-child {
+  padding-left: 12px;
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.settle-sheet__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settle-sheet__foot .btn .n {
+  margin-left: 2px;
+}
+.settle-sheet__hint {
+  text-align: center;
+}
+
+/** M08: экран погашения. */
+.settle-page__head {
+  padding: 32px var(--gutter) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settle-page__title {
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.settle-page__amount {
+  font-size: 48px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.settle-page__meta {
+  font-size: 15px;
+  color: var(--ink-3);
+}
+.settle-page__comment {
+  margin: 20px var(--gutter) 0;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.settle-page__comment-label {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-4);
+  margin-bottom: 2px;
+}
+.settle-page__if {
+  margin: 24px var(--gutter) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settle-page__if-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.settle-page__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 15px;
+}
+.settle-page__grid strong {
+  font-weight: 700;
+}
+.settle-page__arrow {
+  color: var(--muted);
+}
+.settle-page__foot {
+  margin-top: auto;
+  padding: 24px var(--gutter) 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settle-page__hint {
+  margin-top: 4px;
+  text-align: center;
+  line-height: 1.45;
+}
+
+/* ---------- Закрытая группа: плашка (S03, D05), закрытие (D04), итог (D05) ---------- */
+
+.banner--closed {
+  padding: 12px var(--gutter);
+}
+.banner__inner {
+  width: 100%;
+  max-width: 1072px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+.banner__inner > svg {
+  flex: none;
+}
+.banner__text {
+  flex: 1 1 180px;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.banner__error {
+  display: block;
+  color: #ffd9c2;
+}
+.banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.banner__link {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.banner__link:hover {
+  color: #fff;
+}
+.banner__btn {
+  background: transparent;
+  border-color: #fff;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.banner__btn--solid {
+  background: #fff;
+  color: var(--ink);
+}
+
+.settings-bar {
+  justify-content: flex-start;
+  padding: 0 var(--gutter);
+}
+.settings-bar a {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.settings {
+  padding: 32px var(--gutter) 64px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  align-items: flex-start;
+}
+.settings__main {
+  flex: 1 1 520px;
+  max-width: 672px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.settings__close {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+.close-panel {
+  flex: 1 1 360px;
+  min-width: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-margin: 16px;
+}
+.close-panel__title {
+  font-size: 22px;
+  font-weight: 700;
+}
+.close-panel__text {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.close-panel__warn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.5;
+}
+.close-panel__warn-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #6e2e07;
+}
+.close-panel__list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.close-panel__what {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 15px;
+}
+.close-panel__btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-bar {
+  justify-content: flex-start;
+  padding: 0 var(--gutter);
+}
+.report-bar__back {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  min-width: 0;
+}
+.report {
+  padding: 28px var(--gutter) 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.report__head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.report__title {
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.report__sub {
+  font-size: 15px;
+  color: var(--ink-3);
+}
+.report-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.report-tile {
+  background: var(--surface);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.report-tile__label {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.report-tile__value {
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+.report-tile__done {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.report-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.report-section__title {
+  font-size: 20px;
+  font-weight: 600;
+}
+.report-table-wrap {
+  overflow-x: auto;
+}
+.report-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  font-size: 15px;
+  text-align: right;
+}
+.report-table th {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line);
+}
+.report-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.report-table th:first-child,
+.report-table td:first-child {
+  padding-left: 20px;
+  text-align: left;
+}
+.report-table th:last-child,
+.report-table td:last-child {
+  padding-right: 20px;
+}
+.report-table tfoot td {
+  border-bottom: 0;
+  font-weight: 600;
+}
+.report-table__total {
+  font-weight: 600;
+}
+.report-card {
+  padding: 14px var(--gutter);
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.report-card:last-child {
+  border-bottom: 0;
+}
+.report-cards {
+  overflow: hidden;
+}
+.report-card--sum {
+  background: var(--bg);
+}
+.report-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.report-card__grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 12px;
+  row-gap: 4px;
+  font-size: 14px;
+}
+.report-card__grid dt {
+  color: var(--ink-3);
+  white-space: normal;
+}
+.report-card__grid dd {
+  margin: 0;
+  text-align: right;
+}
+.report__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 32px;
+  align-items: start;
+}
+.report__col {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+.report-line {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.report-line:last-child {
+  border-bottom: 0;
+}
+.report-line__main {
+  min-width: 0;
+}
+.report-line__meta {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-4);
+}
+.report-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  font-size: 14px;
+}
+
 /* ---------- Компьютер ---------- */
 
 @media (min-width: 900px) {
+  .report {
+    padding: 40px 24px 64px;
+    gap: 36px;
+  }
+  .report__title {
+    font-size: 34px;
+  }
+  .report-tile {
+    padding: 20px 24px;
+  }
+  .report-tile__value {
+    font-size: 26px;
+  }
+  .settings {
+    padding: 40px 24px 64px;
+  }
+  .settings-bar,
+  .report-bar {
+    padding: 0 24px;
+  }
+  .banner--closed {
+    padding: 12px 24px;
+  }
   .groups-m {
     display: none;
   }
@@ -1531,6 +2245,16 @@ body:has(.sheet-overlay) .toast--live {
     align-items: center;
     padding: 24px;
   }
+  .settle-sheet {
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .balance-panel .settle-cards {
+    padding: 12px 0 0;
+  }
+  .settle-page .settle-page__foot {
+    margin-top: 32px;
+  }
   .conflict-sheet {
     border-radius: 16px;
     padding: 24px;
@@ -1578,4 +2302,94 @@ body:has(.sheet-overlay) .toast--live {
   .mobile-only {
     display: none !important;
   }
+}
+
+/** Чек и комментарий в форме расхода (M04): две пунктирные кнопки в ряд, раскрытое — на всю ширину. */
+.form-extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.form-extras > * {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.form-extras > .dashed-btn {
+  flex: 1 1 0;
+}
+.receipt-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.receipt-file > svg {
+  flex: none;
+  color: var(--ink-3);
+}
+.receipt-file--removed {
+  border-style: dashed;
+}
+/** Имя файла не уже 150px: на телефоне три действия уходят на вторую строку. */
+.receipt-file__name {
+  flex: 1 1 150px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.receipt-file__title {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.receipt-file__actions {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  gap: 14px;
+  font-size: 14px;
+}
+.receipt-error {
+  margin-top: -2px;
+}
+/** Отметка «чек» в строке расхода (D02). */
+.receipt-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: bottom;
+  color: inherit;
+}
+a.receipt-mark {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/** Получатель три дня не подтверждает погашение: «… ждут тебя · давно» и выделенная карточка. */
+.pill--overdue {
+  border: 1.5px solid var(--minus);
+  background: var(--minus-tint);
+  color: var(--minus-strong);
+  font-weight: 500;
+}
+.settle-card--overdue {
+  border: 1.5px solid var(--minus);
+  background: var(--minus-tint);
+}
+.settle-card__overdue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--minus-strong);
+}
+.settle-card--overdue .settle-card__top > svg {
+  color: var(--minus);
 }

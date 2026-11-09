@@ -5,6 +5,7 @@ import { requireProfile } from '../auth/session.js';
 import { db, type Tx } from '../db/client.js';
 import { forbidden, parse } from '../lib/errors.js';
 import { assertOpen, getMemberGroup } from '../groups/service.js';
+import { removeFile } from '../receipts/storage.js';
 import {
   createExpense,
   deleteExpense,
@@ -94,12 +95,14 @@ export function expenseRoutes(app: FastifyInstance): Promise<void> {
     const user = requireProfile(req);
     const { id } = parse(expenseParams, req.params);
     const { version } = parse(versionQuery, req.query);
-    await db.transaction(async (tx) => {
+    const receipt = await db.transaction(async (tx) => {
       const locked = await lockExpenseGroup(tx, id, user.id);
       assertOpen(locked.group);
       assertCanEdit(locked.expense, user.id, locked.group);
-      await deleteExpense(tx, id, user.id, version);
+      return deleteExpense(tx, id, user.id, version);
     });
+    // Чек удалённого расхода больше никто не откроет — убираем файл, чтобы не копились.
+    await removeFile(receipt);
     return reply.status(204).send();
   });
   return Promise.resolve();

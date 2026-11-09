@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
 import { LiveToastListener } from './components/LiveToast.js';
+import { NudgeToast } from './components/NudgeToast.js';
 import { ToastProvider } from './components/Toast.js';
 import { RealtimeProvider, useMe } from './lib/queries/index.js';
 import { CreateGroupPage } from './pages/CreateGroupPage.js';
@@ -10,7 +11,9 @@ import { GroupsPage } from './pages/GroupsPage.js';
 import { InvitePage } from './pages/InvitePage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
+import { ReportPage } from './pages/ReportPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { SettlementPage } from './pages/SettlementPage.js';
 
 /** Пускает только вошедших и представившихся; остальных отправляет на вход и возвращает обратно. */
 function RequireUser({ children }: { children: ReactNode }) {
@@ -22,6 +25,7 @@ function RequireUser({ children }: { children: ReactNode }) {
   return (
     <>
       <LiveToastListener />
+      <NudgeToast />
       {children}
     </>
   );
@@ -42,7 +46,9 @@ export function App() {
           <Route path="/groups/:id/expenses/new" element={<RequireUser><ExpensePage /></RequireUser>} />
           <Route path="/groups/:id/expenses/:expenseId" element={<RequireUser><ExpensePage /></RequireUser>} />
           <Route path="/groups/:id/feed" element={<RequireUser><GroupPage tab="feed" /></RequireUser>} />
+          <Route path="/groups/:id/settlements/:settlementId" element={<RequireUser><SettlementPage /></RequireUser>} />
           <Route path="/groups/:id/settings" element={<RequireUser><SettingsPage /></RequireUser>} />
+          <Route path="/groups/:id/report" element={<RequireUser><ReportPage /></RequireUser>} />
           <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </RealtimeProvider>

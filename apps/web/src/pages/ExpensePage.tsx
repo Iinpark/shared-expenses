@@ -5,10 +5,12 @@ import { Icon } from '../components/Icon.js';
 import { copy, fill } from '../lib/copy.js';
 import { CATEGORY_LABELS, money, moneyCur, today } from '../lib/format.js';
 import { ApiError, useBalances, useCurrentUser, useExpense, useGroup } from '../lib/queries/index.js';
+import type { ReceiptChange } from '../lib/receipts.js';
 import { useExpenseDraft, type Draft } from './expense/draft.js';
 import { useExpenseMutations, type Mutations } from './expense/mutations.js';
 import { clearDraft } from './expense/draftStore.js';
 import { ConflictSheet, EditPreview, FormNotice, useFormNotice, type VersionView } from './expense/Notices.js';
+import { OpenReceipt, ReceiptField } from './expense/ReceiptField.js';
 import { SplitSection } from './expense/SplitSection.js';
 import { NotFoundPage } from './NotFoundPage.js';
 
@@ -22,22 +24,38 @@ export function ExpensePage() {
   const notFound = (e: unknown) => e instanceof ApiError && e.status === 404;
   if (notFound(group.error) || notFound(existing.error)) return <NotFoundPage />;
   if (!group.data || (expenseId && !existing.data)) return <p className="hint" style={{ padding: 20 }}>Загружаем…</p>;
-  const blocked = readOnlyReason(group.data, existing.data, me.id);
-  if (blocked) return <ReadOnly groupId={id} text={blocked} />;
-  return <ExpenseForm key={existing.data?.id ?? 'new'} group={group.data} expense={existing.data} />;
+  return <Editor key={existing.data?.id ?? 'new'} g={group.data} expense={existing.data} meId={me.id} />;
+}
+
+/**
+ * Форма или объяснение, почему её нет. Форму, которую уже начали заполнять, не убираем, если группу закрыли:
+ * над ней появится объяснение, а набранное останется (новый расход — и в черновике на телефоне).
+ */
+function Editor({ g, expense, meId }: { g: GroupDto; expense: ExpenseDto | undefined; meId: string }) {
+  const [formShown, setFormShown] = useState(false);
+  const blocked = readOnlyReason(g, expense, meId, formShown);
+  if (blocked) return <ReadOnly groupId={g.id} text={blocked} expense={expense} />;
+  if (!formShown) setFormShown(true);
+  return <ExpenseForm group={g} expense={expense} />;
 }
 
 /** Почему форму не показываем: группа закрыта или расход чужой (править может плативший, автор или создатель группы). */
-function readOnlyReason(g: GroupDto, expense: ExpenseDto | undefined, meId: string): string | null {
-  if (g.status === 'closed') return 'Группа закрыта, расходы не изменить.';
+function readOnlyReason(g: GroupDto, expense: ExpenseDto | undefined, meId: string, formShown: boolean): string | null {
+  if (g.status === 'closed' && !formShown) return 'Группа закрыта, расходы не изменить.';
   if (expense && !canEditExpense(expense, meId, g.ownerId)) return 'Изменить расход может тот, кто платил, кто его внёс, или создатель группы.';
   return null;
 }
 
-function ReadOnly({ groupId, text }: { groupId: string; text: string }) {
+/** Править нельзя, но приложенный чек посмотреть можно. */
+function ReadOnly({ groupId, text, expense }: { groupId: string; text: string; expense: ExpenseDto | undefined }) {
   return (
     <div className="solo">
       <p className="empty__title">{text}</p>
+      {expense?.receipt && (
+        <p className="hint" style={{ marginTop: 12 }}>
+          К расходу приложен чек. <OpenReceipt expenseId={expense.id} />
+        </p>
+      )}
       <Link to={`/groups/${groupId}`} className="btn btn--outline" style={{ marginTop: 16 }}>
         К группе
       </Link>
@@ -51,9 +69,10 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
   const d = useExpenseDraft(g, expense, me.id);
   const m = useExpenseMutations(g, expense);
   const notice = useFormNotice(g, me.id, expense?.id);
-  const canSave = !!d.shares && !d.exactBad && !m.busy;
+  const [receipt, setReceipt] = useState<ReceiptChange>('keep');
+  const canSave = isSavable(g, d, m.busy);
   const save = (version?: number) => {
-    if (d.total !== null) void m.save(d.input(d.total), version);
+    if (d.total !== null) void m.save(d.input(d.total), receipt, version);
   };
 
   return (
@@ -73,7 +92,10 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
         </div>
         <div className="form-section" style={{ gap: 14, paddingTop: 20 }}>
           <SplitSection d={d} g={g} meId={me.id} />
-          <CommentField d={d} initiallyOpen={!!expense?.comment} />
+          <div className="form-extras">
+            <ReceiptField g={g} expense={expense} change={receipt} onChange={setReceipt} />
+            <CommentField d={d} initiallyOpen={!!expense?.comment} />
+          </div>
         </div>
         {expense && d.shares && d.total !== null && balances.data && (
           <div className="form-section" style={{ paddingTop: 20 }}>
@@ -85,6 +107,8 @@ function ExpenseForm({ group: g, expense }: { group: GroupDto; expense?: Expense
     </div>
   );
 }
+
+const isSavable = (g: GroupDto, d: Draft, busy: boolean) => g.status === 'open' && !!d.shares && !d.exactBad && !busy;
 
 function FormHeader({ g, editing }: { g: GroupDto; editing: boolean }) {
   return (
@@ -294,7 +318,7 @@ function FormFoot(p: FootProps) {
           {copy.expense.exactBlocked}
         </p>
       )}
-      {p.editing && <DeleteControl busy={m.busy} onDelete={() => void m.remove()} />}
+      {p.editing && p.g.status === 'open' && <DeleteControl busy={m.busy} onDelete={() => void m.remove()} />}
     </div>
   );
 }

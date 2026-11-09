@@ -29,6 +29,34 @@
       "when": 1794225094888,
       "tag": "0003_events_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794239574023,
+      "tag": "0004_settlements",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794239877242,
+      "tag": "0005_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794240769738,
+      "tag": "0006_group_close_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794240891905,
+      "tag": "0007_receipts",
+      "breakpoints": true
     }
   ]
 }

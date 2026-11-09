@@ -61,8 +61,27 @@ function PreviewRow(p: { g: GroupDto; isMe: boolean; userId: string; now: number
 /** Хвост текста из copy: «Твою форму это не затронет, балансы обновятся после сохранения.» */
 const NOTICE_TAIL = copy.live.formNotice.slice(copy.live.formNotice.indexOf('». ') + 3);
 
-function noticeText(event: GroupEventDto, g: GroupDto, expenseId: string | undefined): { text: string; same: boolean } | null {
+/** Группу закрыли, пока форма открыта: сохранить не выйдет (сервер ответит 409), но набранное не теряем. */
+const CLOSED_TAIL = 'Сохранить не получится, пока её не откроют снова. Набранное останется в форме.';
+const CLOSED_NOTICE = `Группу закрыли. ${CLOSED_TAIL}`;
+
+interface Notice {
+  text: string;
+  /** Новость про этот же расход или про всю группу: её не перебивают новости о других расходах. */
+  same: boolean;
+}
+
+function statusNotice(event: GroupEventDto, g: GroupDto, closed: boolean): Notice {
+  const gender = actorGender(g, event);
+  const text = closed
+    ? `${event.actorName} ${byGender(gender, 'закрыл', 'закрыла')} группу. ${CLOSED_TAIL}`
+    : `${event.actorName} ${byGender(gender, 'открыл', 'открыла')} группу снова. Можно сохранять.`;
+  return { text, same: true };
+}
+
+function noticeText(event: GroupEventDto, g: GroupDto, expenseId: string | undefined): Notice | null {
   const p = event.payload;
+  if (p.type === 'group_closed' || p.type === 'group_reopened') return statusNotice(event, g, p.type === 'group_closed');
   if (!isExpenseEvent(p)) return null;
   const verb = expenseVerb(p.type, actorGender(g, event));
   const same = latest(p).id === expenseId;
@@ -76,12 +95,14 @@ function noticeText(event: GroupEventDto, g: GroupDto, expenseId: string | undef
  * Новость про этот же расход важнее остальных и не перебивается ими.
  */
 export function useFormNotice(g: GroupDto, meId: string, expenseId: string | undefined) {
-  const [notice, setNotice] = useState<{ text: string; same: boolean } | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   useGroupEventListener((event) => {
     if (event.groupId !== g.id || event.actorId === meId) return;
     const next = noticeText(event, g, expenseId);
     if (next && (next.same || !notice?.same)) setNotice(next);
   });
+  // Группа закрыта, а события мы не видели (например, после переподключения): объясняем сами.
+  if (g.status === 'closed' && !notice?.text.includes(CLOSED_TAIL)) return CLOSED_NOTICE;
   return notice?.text ?? null;
 }
 

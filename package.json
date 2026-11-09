@@ -10,19 +10,23 @@
     "infra:up": "docker compose up -d --wait",
     "infra:down": "docker compose down",
     "dev": "concurrently -k -n server,web -c blue,magenta \"pnpm --filter @se/server dev\" \"pnpm --filter @se/web dev\"",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && tsc -p e2e/tsconfig.json",
     "test": "pnpm -r test",
     "lint": "eslint . --max-warnings 0",
     "knip": "knip",
-    "check": "pnpm typecheck && pnpm lint && pnpm knip && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm knip && pnpm test",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.19.2",
     "concurrently": "10.0.7",
     "eslint": "10.14.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.14.0",
     "knip": "6.44.2",
+    "postgres": "4.1.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1"
   }

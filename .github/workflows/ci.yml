@@ -44,7 +44,7 @@ jobs:
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
-      - name: Типы
+      - name: Типы (пакеты и e2e)
         run: pnpm typecheck
       - name: ESLint (строгие правила, сложность ≤ 10)
         run: pnpm lint
@@ -54,3 +54,52 @@ jobs:
         run: pnpm test
       - name: Сборка клиента
         run: pnpm --filter @se/web build
+
+  e2e:
+    # Сквозной сценарий в браузере на двух клиентах одновременно (Playwright): настоящий сервер,
+    # настоящий клиент, отдельная база. Отдельной задачей, чтобы быстрые проверки не ждали браузер.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: shared_expenses
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d shared_expenses"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Включить pnpm из packageManager
+        run: corepack enable
+      - name: Кэш pnpm
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Браузер для Playwright
+        run: pnpm exec playwright install --with-deps chromium
+      - name: E2E на двух клиентах
+        run: pnpm e2e
+        env:
+          CI: 'true'
+      - name: Отчёт Playwright при падении
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/report
+            test-results

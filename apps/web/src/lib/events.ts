@@ -1,11 +1,18 @@
 /** Тексты и арифметика событий группы для тостов, формы и ленты. Без запросов к API. */
-import { byGender, expenseEffect, type ExpenseSnapshot, type Gender, type GroupDto, type GroupEventDto, type GroupEventPayload } from '@se/shared';
+import { byGender, expenseEffect, type ExpenseSnapshot, type Gender, type GroupDto, type GroupEventDto, type GroupEventPayload, type SettlementSnapshot } from '@se/shared';
 import { CATEGORY_LABELS, money } from './format.js';
 
 export type ExpensePayload = Extract<GroupEventPayload, { type: 'expense_created' | 'expense_updated' | 'expense_deleted' }>;
 
 export const isExpenseEvent = (p: GroupEventPayload): p is ExpensePayload =>
   p.type === 'expense_created' || p.type === 'expense_updated' || p.type === 'expense_deleted';
+
+export type SettlementPayload = Extract<GroupEventPayload, { settlement: SettlementSnapshot }>;
+
+export const isSettlementEvent = (p: GroupEventPayload): p is SettlementPayload => 'settlement' in p;
+
+/** M08: экран погашения. */
+export const settlementPath = (groupId: string, settlementId: string) => `/groups/${groupId}/settlements/${settlementId}`;
 
 /** Расход до и после события: у нового нет «до», у удалённого нет «после». */
 export function snapshots(p: ExpensePayload): { before: ExpenseSnapshot | null; after: ExpenseSnapshot | null } {

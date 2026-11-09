@@ -51,3 +51,9 @@ export const countGenitive = (n: number) => ['', 'одного', 'двух', 'т
 
 /** Ссылка-приглашение в группу. */
 export const inviteLink = (token: string) => `${location.origin}/j/${token}`;
+
+/** Размер файла: «240 КБ», «3,4 МБ». */
+export function fileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${String(Math.max(1, Math.round(bytes / 1024)))}\u00a0КБ`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')}\u00a0МБ`;
+}
