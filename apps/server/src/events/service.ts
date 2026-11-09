@@ -81,3 +81,27 @@ export async function listEvents(tx: Tx, groupId: string, before: string | null,
   const last = page.at(-1);
   return { events: page.map(toDto), nextBefore: rows.length > limit && last ? last.id : null };
 }
+
+/** Сколько пропущенных событий досылаем при переподключении; больше — проще перезагрузить данные целиком. */
+const REPLAY_LIMIT = 200;
+
+/**
+ * События всех групп пользователя после события afterId — для досылки при переподключении SSE
+ * (браузер сам присылает id последнего полученного события в заголовке Last-Event-ID).
+ * null — досылать нечего с уверенностью (курсор неизвестен или пропущено слишком много):
+ * клиент должен перезагрузить данные целиком.
+ */
+export async function eventsSince(tx: Tx, userId: string, afterId: string): Promise<GroupEventDto[] | null> {
+  const [cursor] = await tx.select({ createdAt: groupEvents.createdAt }).from(groupEvents).where(eq(groupEvents.id, afterId));
+  if (!cursor) return null;
+  const rows = await selectEvents(tx)
+    .where(
+      and(
+        dsql`${groupEvents.groupId} in (select group_id from group_members where user_id = ${userId})`,
+        dsql`(${groupEvents.createdAt}, ${groupEvents.id}) > (select created_at, id from group_events where id = ${afterId})`,
+      ),
+    )
+    .orderBy(groupEvents.createdAt, groupEvents.id)
+    .limit(REPLAY_LIMIT + 1);
+  return rows.length > REPLAY_LIMIT ? null : rows.map(toDto);
+}

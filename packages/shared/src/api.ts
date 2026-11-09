@@ -239,5 +239,9 @@ export interface GroupEventsPage {
   nextBefore: string | null;
 }
 
-/** Сообщения сервера в WebSocket /ws. */
-export type WsServerMessage = { type: 'hello'; time: string } | { type: 'group_event'; event: GroupEventDto };
+/**
+ * Поток GET /api/events/stream (Server-Sent Events). Типы событий в потоке:
+ * group_event — данные GroupEventDto; resync — пропущено слишком много, перезагрузить всё;
+ * ready — досылка после переподключения закончена.
+ */
+export const SSE_EVENTS = { groupEvent: 'group_event', resync: 'resync', ready: 'ready' } as const;

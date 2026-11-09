@@ -1,11 +1,11 @@
-import { must, type GroupEventsPage, type WsServerMessage } from '@se/shared';
+import { must, type GroupEventDto, type GroupEventsPage } from '@se/shared';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import type { WebSocket } from 'ws';
 import { sql } from '../src/db/client.js';
 import { expenseOf, groupOf, login, makeApp, resetDb } from './helpers.js';
 
 const app = await makeApp();
-await app.ready();
+// SSE — долгий поток, app.inject ждёт конца ответа. Поэтому настоящий сервер на свободном порту.
+const base = await app.listen({ port: 0, host: '127.0.0.1' });
 afterAll(async () => {
   await app.close();
   await sql.end({ timeout: 5 });
@@ -17,18 +17,34 @@ const req = (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', cookie: Cookie
   app.inject({ method, url, headers: { cookie }, payload });
 const feedOf = (res: { json: () => unknown }) => res.json() as GroupEventsPage;
 
-/** Подключение к /ws, которое складывает все сообщения сервера. */
-async function connect(cookie: Cookie | null) {
-  const messages: WsServerMessage[] = [];
-  let closeCode: number | null = null;
-  const socket: WebSocket = await app.injectWS('/ws', { headers: cookie ? { cookie } : {} }, {
-    onInit: (ws) => {
-      ws.on('message', (data: Buffer) => messages.push(JSON.parse(data.toString()) as WsServerMessage));
-      ws.on('close', (code: number) => (closeCode = code));
-    },
-  });
-  const events = () => messages.flatMap((m) => (m.type === 'group_event' ? [m.event] : []));
-  return { socket, messages, events, closeCode: () => closeCode };
+/** Подписка на поток SSE, которая разбирает кадры и складывает их. */
+async function connect(cookie: Cookie | null, lastEventId?: string) {
+  const frames: { event: string; id: string | null; data: string }[] = [];
+  const abort = new AbortController();
+  const headers: Record<string, string> = cookie ? { cookie } : {};
+  if (lastEventId) headers['last-event-id'] = lastEventId;
+  const res = await fetch(`${base}/api/events/stream`, { headers, signal: abort.signal });
+  if (res.ok && res.body) {
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let tail = '';
+    void (async () => {
+      for (;;) {
+        const chunk = await reader.read().catch(() => ({ done: true as const, value: undefined }));
+        if (chunk.done) return;
+        tail += chunk.value;
+        const parts = tail.split('\n\n');
+        tail = parts.pop() ?? '';
+        for (const part of parts) {
+          const field = (name: string) => part.split('\n').find((l) => l.startsWith(`${name}: `))?.slice(name.length + 2) ?? null;
+          const event = field('event');
+          if (event) frames.push({ event, id: field('id'), data: field('data') ?? '' });
+        }
+      }
+    })();
+  }
+  const events = () => frames.flatMap((f) => (f.event === 'group_event' ? [JSON.parse(f.data) as GroupEventDto] : []));
+  const has = (event: string) => frames.some((f) => f.event === event);
+  return { status: res.status, events, has, close: () => { abort.abort(); } };
 }
 
 /** Ждёт, пока условие станет правдой: события приходят асинхронно, после коммита. */
@@ -102,7 +118,7 @@ describe('лента группы', () => {
   });
 });
 
-describe('живые обновления по WebSocket', () => {
+describe('живые обновления (SSE)', () => {
   it('участники группы получают событие сразу после сохранения, чужой — нет', async () => {
     const { anya, boris, groupId, taxi } = await setup();
     const stranger = await login(app, 'x@example.com', 'Икс');
@@ -115,8 +131,8 @@ describe('живые обновления по WebSocket', () => {
 
     await new Promise((r) => setTimeout(r, 200));
     expect(x.events()).toEqual([]);
-    a.socket.terminate();
-    x.socket.terminate();
+    a.close();
+    x.close();
   });
 
   it('отклонённая правка (нет прав) никому не рассылается', async () => {
@@ -131,13 +147,38 @@ describe('живые обновления по WebSocket', () => {
     expect((await req('PUT', vika, `/api/expenses/${created.id}`, taxi(1, 1))).statusCode).toBe(403);
     await new Promise((r) => setTimeout(r, 200));
     expect(a.events().some((e) => e.payload.type === 'expense_updated')).toBe(false);
-    a.socket.terminate();
+    a.close();
   });
 
-  it('без входа соединение закрывается', async () => {
+  it('без входа поток не открывается', async () => {
     const anon = await connect(null);
-    await until(() => anon.closeCode() !== null);
-    expect(anon.closeCode()).toBe(4401);
+    expect(anon.status).toBe(401);
+  });
+
+  it('после переподключения досылает пропущенное по Last-Event-ID, без повторов', async () => {
+    const { anya, boris, groupId, taxi } = await setup();
+    const first = await connect(anya);
+    await req('POST', boris, `/api/groups/${groupId}/expenses`, taxi(1000));
+    await until(() => first.events().length === 1);
+    const lastSeen = must(first.events()[0]).id;
+    first.close();
+
+    // Пока Аня без связи, Борис добавил ещё два расхода.
+    await req('POST', boris, `/api/groups/${groupId}/expenses`, taxi(2000));
+    await req('POST', boris, `/api/groups/${groupId}/expenses`, taxi(3000));
+
+    const again = await connect(anya, lastSeen);
+    await until(() => again.has('ready'));
+    const amounts = again.events().map((e) => (e.payload.type === 'expense_created' ? e.payload.after.amount : null));
+    expect(amounts).toEqual([2000, 3000]);
+    again.close();
+  });
+
+  it('неизвестный Last-Event-ID — команда перезагрузить данные целиком', async () => {
+    const { anya } = await setup();
+    const s = await connect(anya, '00000000-0000-4000-8000-000000000000');
+    await until(() => s.has('resync'));
+    s.close();
   });
 
   it('участник, вступивший после подключения, сразу получает события новой группы', async () => {
@@ -150,6 +191,6 @@ describe('живые обновления по WebSocket', () => {
 
     await req('POST', anya, `/api/groups/${groupId}/expenses`, { ...taxi(5000), payerId: group.ownerId });
     await until(() => v.events().some((e) => e.payload.type === 'expense_created'));
-    v.socket.terminate();
+    v.close();
   });
 });
