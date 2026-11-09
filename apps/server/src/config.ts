@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 /** Настройки из окружения. Значения по умолчанию совпадают с docker-compose.yml, поэтому .env не обязателен. */
 export const config = {
   port: Number(process.env.PORT ?? 3000),
@@ -8,6 +10,8 @@ export const config = {
   secret: process.env.APP_SECRET ?? 'dev-secret-change-me',
   /** Как часто проверять, кому пора напомнить о долге. */
   reminderIntervalMs: Number(process.env.REMINDER_INTERVAL_MS ?? 60_000),
+  /** Папка для файлов чеков. */
+  uploadDir: process.env.UPLOAD_DIR ?? fileURLToPath(new URL('../uploads', import.meta.url)),
   isProduction: process.env.NODE_ENV === 'production',
   smtp: {
     host: process.env.SMTP_HOST ?? 'localhost',

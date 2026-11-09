@@ -50,6 +50,13 @@
       "when": 1794240769738,
       "tag": "0006_group_close_events",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794240891905,
+      "tag": "0007_receipts",
+      "breakpoints": true
     }
   ]
 }

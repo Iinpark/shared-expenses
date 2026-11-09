@@ -185,7 +185,20 @@ export interface ExpenseDto {
   createdAt: string;
   updatedBy: string;
   updatedAt: string;
+  /** Файл чека, если приложен. Сам файл: GET /api/expenses/:id/receipt. */
+  receipt: ReceiptDto | null;
 }
+
+export interface ReceiptDto {
+  name: string;
+  type: ReceiptType;
+  size: number;
+}
+
+/** Какие чеки принимаем: фото и PDF. Проверяется по содержимому файла, не по расширению. */
+export const RECEIPT_TYPES = ['image/jpeg', 'image/png', 'application/pdf'] as const;
+export type ReceiptType = (typeof RECEIPT_TYPES)[number];
+export const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
 
 export interface BalancesDto {
   /** В порядке вступления. Плюс — участнику вернут, минус — с него. */

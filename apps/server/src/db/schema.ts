@@ -190,6 +190,11 @@ export const expenses = pgTable(
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    /** Файл чека: имя файла в папке загрузок (случайное), исходное имя, тип и размер. */
+    receiptFile: text('receipt_file'),
+    receiptName: text('receipt_name'),
+    receiptType: text('receipt_type'),
+    receiptSize: integer('receipt_size'),
   },
   (t) => [
     check('expenses_amount_positive', sql`${t.amount} > 0`),

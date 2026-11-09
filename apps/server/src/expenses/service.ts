@@ -6,6 +6,7 @@ import {
   type BalancesDto,
   type ExpenseDto,
   type ExpenseShareDto,
+  type ReceiptDto,
   type expenseInputSchema } from '@se/shared';
 import { and, asc, desc, eq, inArray, isNull, sql as dsql } from 'drizzle-orm';
 import type { z } from 'zod';
@@ -70,6 +71,10 @@ function toDto(e: ExpenseRow, shares: ExpenseShareDto[]): ExpenseDto {
     createdAt: e.createdAt.toISOString(),
     updatedBy: e.updatedBy,
     updatedAt: e.updatedAt.toISOString(),
+    receipt:
+      e.receiptFile && e.receiptName && e.receiptType && e.receiptSize !== null
+        ? { name: e.receiptName, type: e.receiptType as ReceiptDto['type'], size: e.receiptSize }
+        : null,
   };
 }
 
