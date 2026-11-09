@@ -205,7 +205,7 @@ export async function deleteExpense(tx: Tx, expenseId: string, userId: string, v
 }
 
 /**
- * Балансы участников групп: заплатил за всех минус сумма своих долей.
+ * Балансы участников групп: заплатил за всех минус сумма своих долей, плюс подтверждённые погашения.
  * Считаются каждый раз из расходов (решение 4 в DECISIONS), в базе не хранятся.
  * Возвращает groupId → (userId → баланс); участники без расходов имеют 0.
  */
@@ -230,6 +230,13 @@ export async function balancesByGroup(tx: Tx, groupIds: string[]): Promise<Map<s
       select e.group_id, s.user_id, -s.amount, null
         from expense_shares s join expenses e on e.id = s.expense_id
        where e.group_id in (${ids}) and e.deleted_at is null
+      union all
+      -- Подтверждённое погашение: отдавшему с него меньше (+), получившему вернут меньше (−).
+      select st.group_id, st.from_id, st.amount, null
+        from settlements st where st.group_id in (${ids}) and st.status = 'confirmed'
+      union all
+      select st.group_id, st.to_id, -st.amount, null
+        from settlements st where st.group_id in (${ids}) and st.status = 'confirmed'
     )
     select group_id, user_id, sum(amount)::text as balance
       from parts

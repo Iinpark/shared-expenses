@@ -29,6 +29,13 @@
       "when": 1794225094888,
       "tag": "0003_events_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794239574023,
+      "tag": "0004_settlements",
+      "breakpoints": true
     }
   ]
 }

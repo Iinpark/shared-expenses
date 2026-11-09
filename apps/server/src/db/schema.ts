@@ -29,7 +29,12 @@ export const groupEventTypeEnum = pgEnum('group_event_type', [
   'expense_deleted',
   'member_joined',
   'group_updated',
+  'settlement_created',
+  'settlement_confirmed',
+  'settlement_rejected',
+  'settlement_cancelled',
 ]);
+export const settlementStatusEnum = pgEnum('settlement_status', ['pending', 'confirmed', 'rejected', 'cancelled']);
 export const splitModeEnum = pgEnum('split_mode', ['equal', 'shares', 'exact']);
 
 /** Деньги: целые минимальные единицы валюты. bigint в базе, number в коде (до 2^53 точно). */
@@ -207,6 +212,38 @@ export const expenseShares = pgTable(
     primaryKey({ columns: [t.expenseId, t.userId] }),
     index('expense_shares_user_idx').on(t.userId),
     check('expense_shares_amount_nonneg', sql`${t.amount} >= 0`),
+  ],
+);
+
+// ---------- Погашения ----------
+
+/**
+ * Погашение: должник отметил, что передал деньги получателю. В баланс идёт только после подтверждения
+ * получателем (status = confirmed). Отклонённые и отменённые остаются для ленты и истории.
+ */
+export const settlements = pgTable(
+  'settlements',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    groupId: uuid('group_id')
+      .notNull()
+      .references(() => groups.id, { onDelete: 'cascade' }),
+    fromId: uuid('from_id')
+      .notNull()
+      .references(() => users.id),
+    toId: uuid('to_id')
+      .notNull()
+      .references(() => users.id),
+    amount: money('amount').notNull(),
+    comment: text('comment'),
+    status: settlementStatusEnum('status').notNull().default('pending'),
+    createdAt: createdAt(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (t) => [
+    check('settlements_amount_positive', sql`${t.amount} > 0`),
+    check('settlements_not_self', sql`${t.fromId} <> ${t.toId}`),
+    index('settlements_group_idx').on(t.groupId, t.status),
   ],
 );
 

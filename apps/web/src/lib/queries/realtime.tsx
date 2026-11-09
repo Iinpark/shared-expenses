@@ -40,6 +40,10 @@ function expenseIdOf(event: GroupEventDto): string | null {
       return p.before.id;
     case 'member_joined':
     case 'group_updated':
+    case 'settlement_created':
+    case 'settlement_confirmed':
+    case 'settlement_rejected':
+    case 'settlement_cancelled':
       return null;
   }
 }
