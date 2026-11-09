@@ -5,3 +5,4 @@ export * from './text.js';
 export * from './balances.js';
 export * from './money.js';
 export * from './split.js';
+export * from './assert.js';
