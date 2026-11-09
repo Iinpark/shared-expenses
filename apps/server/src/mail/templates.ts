@@ -1,4 +1,4 @@
-import { byGender, currencyName, currencySymbol, formatAmount, isCurrencyCode, type CurrencyCode, type Gender } from '@se/shared';
+import { byGender, currencyName, currencySymbol, formatAmount, isCurrencyCode, type CurrencyCode, type Gender, type GroupReportDto } from '@se/shared';
 import { escapeHtml, renderEmail, renderText } from './layout.js';
 
 export interface EmailMessage {
@@ -110,3 +110,59 @@ function plural(n: number, one: string, few: string, many: string): string {
 }
 
 const dayMonth = (d: Date) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(d);
+
+/** Письмо E03: группа закрыта, итог. Уходит всем участникам; повторное закрытие после правок — новое письмо. */
+export function closedEmail(p: {
+  to: string;
+  closedByName: string;
+  closedByGender: Gender | null;
+  report: GroupReportDto;
+  url: string;
+}): EmailMessage {
+  const r = p.report;
+  const money = (v: number) => `${formatAmount(v, r.currency as CurrencyCode)} ${currencySymbol(r.currency as CurrencyCode)}`;
+  const nameOf = (id: string) => r.members.find((m) => m.userId === id)?.name ?? '';
+  const subject = `«${r.name}» закрыта: итог`;
+  const intro = `${p.closedByName} ${byGender(p.closedByGender, 'закрыл', 'закрыла')} группу. Новые расходы добавить нельзя, всё записанное остаётся в отчёте.`;
+  const settled = r.transfers.length === 0;
+  const table = [
+    { label: 'Потрачено вместе', value: money(r.totalSpent) },
+    { label: 'Итог', value: settled ? 'Все в расчёте' : `Осталось перевести: ${String(r.transfers.length)}` },
+  ];
+  const sections = [
+    {
+      title: 'Кто кому сколько перевёл',
+      rows: r.settlements.map((s) => ({
+        label: `${nameOf(s.fromId)} → ${nameOf(s.toId)}`,
+        value: `${money(s.amount)}, ${s.status === 'confirmed' ? 'подтверждено' : 'ждёт подтверждения'}`,
+      })),
+    },
+    { title: 'Осталось перевести', rows: r.transfers.map((t) => ({ label: `${nameOf(t.fromId)} → ${nameOf(t.toId)}`, value: money(t.amount) })) },
+    { title: 'Доли участников: заплатил / доля', rows: r.members.map((m) => ({ label: m.name, value: `${money(m.paid)} / ${money(m.share)}` })) },
+  ].filter((sec) => sec.rows.length > 0);
+  const footer = 'Нашли ошибку? Создатель группы может открыть её снова и поправить расходы. Тогда итог пересчитается и придёт новым письмом.';
+  return {
+    to: p.to,
+    subject,
+    html: renderEmail({
+      title: escapeHtml(`Группа «${r.name}» закрыта`),
+      paragraphs: [escapeHtml(intro)],
+      table,
+      sections,
+      button: { label: 'Открыть отчёт', url: p.url },
+      footer: escapeHtml(footer),
+    }),
+    text: renderText({
+      title: subject,
+      lines: [
+        intro,
+        '',
+        ...table.map((t) => `${t.label}: ${t.value}`),
+        ...sections.flatMap((sec) => ['', `${sec.title}:`, ...sec.rows.map((x) => `${x.label}: ${x.value}`)]),
+        '',
+        'Открыть отчёт:',
+      ],
+      url: p.url,
+    }),
+  };
+}

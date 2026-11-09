@@ -279,3 +279,34 @@ export interface SettlementDto {
   createdAt: string;
   decidedAt: string | null;
 }
+
+// ---------- Итоговый отчёт (D05) и закрытие группы ----------
+
+export interface ReportMemberDto {
+  userId: string;
+  name: string;
+  /** Сколько заплатил за всех. */
+  paid: number;
+  /** Сумма его долей. */
+  share: number;
+  /** Подтверждённые погашения: отдал (+) минус получил (−). */
+  settled: number;
+  /** Итог: paid − share + settled. 0 — в расчёте. */
+  balance: number;
+}
+
+export interface GroupReportDto {
+  groupId: string;
+  name: string;
+  currency: string;
+  status: GroupStatus;
+  closedAt: string | null;
+  /** Даты первого и последнего расхода (YYYY-MM-DD), если расходы есть. */
+  period: { from: string; to: string } | null;
+  totalSpent: number;
+  members: ReportMemberDto[];
+  /** Погашения: подтверждённые и ещё ожидающие (в итог не входят). */
+  settlements: SettlementDto[];
+  /** Чтобы рассчитаться окончательно: оставшиеся переводы. */
+  transfers: Transfer[];
+}

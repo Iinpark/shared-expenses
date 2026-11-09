@@ -13,6 +13,8 @@ export interface EmailParts {
   paragraphs: string[];
   /** Таблица «подпись — сумма» (тексты не экранированы: экранирует renderEmail). Первая строка — итог. */
   table?: { label: string; value: string }[];
+  /** Дополнительные таблицы с заголовком (тексты экранирует renderEmail). */
+  sections?: { title: string; rows: { label: string; value: string }[] }[];
   /** Абзацы после таблицы, до кнопки (уже экранированы). */
   afterTable?: string[];
   button?: { label: string; url: string };
@@ -57,6 +59,7 @@ export function renderEmail(p: EmailParts): string {
     ...renderHead(p),
     ...p.paragraphs.map(paragraph),
     ...(p.table?.length ? [renderTable(p.table)] : []),
+    ...(p.sections ?? []).flatMap((sec) => [sectionTitle(sec.title), renderTable(sec.rows, false)]),
     ...(p.afterTable ?? []).map(paragraph),
     ...(p.button ? renderButton(p.button) : []),
     ...(p.notes ?? []).map(note),
@@ -69,11 +72,15 @@ export function renderEmail(p: EmailParts): string {
 <tbody>${rows.join('\n')}</tbody></table></body></html>`;
 }
 
-function renderTable(table: { label: string; value: string }[]): string {
+const sectionTitle = (title: string) =>
+  `<tr><td style="padding:24px 36px 0;font-size:16px;font-weight:bold;color:#1B1D22">${escapeHtml(title)}</td></tr>`;
+
+function renderTable(table: { label: string; value: string }[], firstIsTotal = true): string {
   const cells = table
     .map((r, i) => {
-      const weight = i === 0 ? 'bold' : 'normal';
-      const size = i === 0 ? 20 : 16;
+      const total = firstIsTotal && i === 0;
+      const weight = total ? 'bold' : 'normal';
+      const size = total ? 20 : 15;
       return `<tr><td style="padding:8px 0;border-bottom:1px solid #EAECEF;font-size:${size}px;font-weight:${weight};color:#1B1D22">${escapeHtml(r.label)}</td><td align="right" style="padding:8px 0;border-bottom:1px solid #EAECEF;font-size:${size}px;font-weight:${weight};color:#1B1D22;white-space:nowrap">${escapeHtml(r.value)}</td></tr>`;
     })
     .join('');

@@ -8,6 +8,7 @@ import { config } from './config.js';
 import { sql } from './db/client.js';
 import { expenseRoutes } from './expenses/routes.js';
 import { groupRoutes } from './groups/routes.js';
+import { reportRoutes } from './reports/routes.js';
 import { settlementRoutes } from './settlements/routes.js';
 import { registerErrorHandler } from './lib/errors.js';
 import { RealtimeHub } from './realtime/hub.js';
@@ -45,6 +46,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   await app.register(groupRoutes);
   await app.register(expenseRoutes);
   await app.register(settlementRoutes);
+  await app.register(reportRoutes);
 
   // Реалтайм: поток событий групп пользователя (SSE).
   const hub = new RealtimeHub();
