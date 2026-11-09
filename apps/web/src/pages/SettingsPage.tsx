@@ -42,6 +42,7 @@ export function SettingsPage() {
 
   const isOwner = g.ownerId === me.id;
   const canEdit = isOwner && g.status === 'open';
+  const daysValid = /^\d+$/.test(days) && Number(days) >= 1 && Number(days) <= 90;
   const dirty = name.trim() !== g.name || currency !== g.currency || Number(days) !== g.reminderDays;
 
   async function act(fn: () => Promise<GroupDto>, done?: string) {
@@ -112,11 +113,12 @@ export function SettingsPage() {
                 <input id="d" className="input input--days n" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, '').slice(0, 2))} />
                 <span>{copy.group.days}</span>
               </div>
+              {!daysValid && <p className="field-error" style={{ marginTop: -8 }}>От 1 до 90 дней</p>}
               <p className="hint" style={{ marginTop: -8 }}>
                 Не чаще раза в неделю. Пока есть неподтверждённое погашение на всю сумму, письмо не уходит.
               </p>
               {dirty && (
-                <button className="btn btn--primary" style={{ alignSelf: 'flex-start' }} disabled={busy || !name.trim()} onClick={save}>
+                <button className="btn btn--primary" style={{ alignSelf: 'flex-start' }} disabled={busy || !name.trim() || !daysValid || !dirty} onClick={save}>
                   Сохранить
                 </button>
               )}

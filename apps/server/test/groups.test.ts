@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { db, sql } from '../src/db/client.js';
-import { groups } from '../src/db/schema.js';
+import { groups, invites } from '../src/db/schema.js';
 import { emailsTo, lastEmailTo, login, makeApp, resetDb, tokenFromUrl } from './helpers.js';
 
 const app = await makeApp();
@@ -141,5 +141,50 @@ describe('приглашения', () => {
 
   it('несуществующая ссылка — 404', async () => {
     expect((await get(null, '/api/invites/nope')).statusCode).toBe(404);
+  });
+
+  it('приглашение по почте, которое истекло, можно отправить заново', async () => {
+    const anya = await login(app, 'anya@example.com', 'Аня');
+    const group = await createKazan(anya, ['vika@example.com']);
+    await db.update(invites).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(invites.email, 'vika@example.com'));
+    const again = (await post(anya, `/api/groups/${group.id}/invites`, { emails: ['vika@example.com'] })).json();
+    expect(again.pendingInvites.map((i: { email: string }) => i.email)).toEqual(['vika@example.com']);
+    expect(await emailsTo('vika@example.com', 'зовёт тебя')).toHaveLength(2);
+  });
+
+  it('пересланное приглашение не закрывает приглашение адресата, а после его вступления не работает', async () => {
+    const anya = await login(app, 'anya@example.com', 'Аня');
+    const group = await createKazan(anya, ['vika@example.com']);
+    const token = tokenFromUrl((await lastEmailTo('vika@example.com'))!.text)!;
+
+    const gena = await login(app, 'gena@example.com', 'Гена');
+    expect((await post(gena, `/api/invites/${token}/accept`)).statusCode).toBe(200);
+    expect((await get(anya, `/api/groups/${group.id}`)).json().pendingInvites).toHaveLength(1);
+
+    const vika = await login(app, 'vika@example.com', 'Вика');
+    expect((await post(vika, `/api/invites/${token}/accept`)).statusCode).toBe(200);
+    expect((await get(anya, `/api/groups/${group.id}`)).json().pendingInvites).toHaveLength(0);
+
+    const boris = await login(app, 'boris@example.com', 'Борис');
+    expect((await post(boris, `/api/invites/${token}/accept`)).statusCode).toBe(409);
+    expect((await get(null, `/api/invites/${token}`)).json().status).toBe('expired');
+  });
+
+  it('за сутки можно разослать не больше 100 приглашений', async () => {
+    const anya = await login(app, 'anya@example.com', 'Аня');
+    const group = await createKazan(anya);
+    const batch = (from: number) => Array.from({ length: 30 }, (_, i) => `p${from + i}@example.com`);
+    for (let i = 0; i < 3; i++) expect((await post(anya, `/api/groups/${group.id}/invites`, { emails: batch(i * 30) })).statusCode).toBe(200);
+    const res = await post(anya, `/api/groups/${group.id}/invites`, { emails: batch(90) });
+    expect(res.statusCode).toBe(429);
+  });
+
+  it('пустое изменение настроек — понятная ошибка, а не 500', async () => {
+    const anya = await login(app, 'anya@example.com', 'Аня');
+    const group = await createKazan(anya);
+    const res = await app.inject({ method: 'PATCH', url: `/api/groups/${group.id}`, headers: { cookie: anya }, payload: {} });
+    expect(res.statusCode).toBe(400);
+    const zero = await app.inject({ method: 'PATCH', url: `/api/groups/${group.id}`, headers: { cookie: anya }, payload: { reminderDays: 0 } });
+    expect(zero.json().error.message).toBe('От 1 до 90 дней');
   });
 });
