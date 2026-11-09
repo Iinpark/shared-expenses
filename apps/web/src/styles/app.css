@@ -2319,8 +2319,9 @@ strong.settle-summary__total:last-child {
 }
 .receipt-file {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
   min-height: 48px;
   padding: 8px 14px;
   border: 1.5px solid var(--line);
@@ -2334,8 +2335,9 @@ strong.settle-summary__total:last-child {
 .receipt-file--removed {
   border-style: dashed;
 }
+/** Имя файла не уже 150px: на телефоне три действия уходят на вторую строку. */
 .receipt-file__name {
-  flex: 1;
+  flex: 1 1 150px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -2348,6 +2350,7 @@ strong.settle-summary__total:last-child {
 }
 .receipt-file__actions {
   flex: none;
+  margin-left: auto;
   display: flex;
   gap: 14px;
   font-size: 14px;

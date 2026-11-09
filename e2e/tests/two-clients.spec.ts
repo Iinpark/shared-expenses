@@ -3,6 +3,9 @@ import { closeDb, groupIdFromUrl, signIn, twoClients } from './helpers.js';
 
 test.afterAll(closeDb);
 
+/** Самый маленький PNG (1×1): сервер проверяет тип по первым байтам. */
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+
 /**
  * Сквозной сценарий на двух клиентах одновременно: расход у одного — баланс у другого обновляется
  * без перезагрузки; погашение с подтверждением; закрытие группы видно сразу.
@@ -31,6 +34,9 @@ test('два участника: расход, погашение с подтв�
   await anya.goto(`/groups/${groupId}/expenses/new`);
   await anya.locator('.amount-input').fill('1000');
   await anya.getByPlaceholder('Например, ужин').fill('Такси');
+  // …и прикладывает фото чека: файл уходит сразу после создания расхода.
+  await anya.locator('input[type=file]').setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: PNG });
+  await expect(anya.locator('.receipt-file')).toContainText('taxi.png');
   await anya.getByRole('button', { name: /^Сохранить/ }).click();
   await anya.waitForURL(new RegExp(`/groups/${groupId}$`));
 
@@ -38,6 +44,15 @@ test('два участника: расход, погашение с подтв�
   await expect(boris.locator('.hero__label')).toHaveText('С тебя');
   await expect(boris.locator('.hero__amount')).toContainText('500,00');
   await expect(boris.getByText(/Аня добавил.*Такси/)).toBeVisible();
+
+  // Чек приложен: отметка «чек» в списке расходов, файл открывается у Бориса (он участник группы).
+  await anya.goto(`/groups/${groupId}/expenses`);
+  const mark = anya.getByRole('link', { name: 'Открыть чек' });
+  await expect(mark).toBeVisible();
+  const file = await boris.request.get((await mark.getAttribute('href')) ?? '');
+  expect(file.status()).toBe(200);
+  expect(file.headers()['content-type']).toBe('image/png');
+  await anya.goto(`/groups/${groupId}`);
 
   // Борис отмечает перевод всей суммы.
   await boris.getByRole('button', { name: 'Отметить', exact: true }).first().click();
