@@ -1,5 +1,5 @@
 import { amountToInput, currencySymbol, parseAmount, type BalancesDto, type CurrencyCode, type GroupDto, type SettlementDto } from '@se/shared';
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type SyntheticEvent } from 'react';
 import { Icon } from '../../components/Icon.js';
 import { useToast } from '../../components/Toast.js';
 import { copy, fill } from '../../lib/copy.js';
@@ -36,23 +36,7 @@ function amountError(value: number | null, text: string, allowed: number, curren
   return null;
 }
 
-/**
- * M07 «Отметить перевод»: шит снизу на телефоне, окно по центру на компьютере.
- * Деньги приложение не переводит — должник отмечает, получатель потом подтверждает.
- */
-export function SettleSheet({ g, meId, balances, settlements, request, onClose }: Props) {
-  const recipients = balances.transfers.filter((t) => t.fromId === meId).map((t) => t.toId);
-  const [toId, setToId] = useState(request.toId);
-  const allowed = allowedTo(balances, settlements, meId, toId);
-  const prefill = request.amount !== undefined && request.amount <= allowed ? request.amount : allowed;
-  const [mode, setMode] = useState<Mode>(prefill === allowed ? 'all' : 'part');
-  const [text, setText] = useState(() => amountToInput(prefill, g.currency as CurrencyCode));
-  const [comment, setComment] = useState('');
-  const [touched, setTouched] = useState(false);
-  const mark = useMarkSettlement(g.id);
-  const toast = useToast();
-  const titleId = useId();
-
+function useEscape(onClose: () => void) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -62,23 +46,62 @@ export function SettleSheet({ g, meId, balances, settlements, request, onClose }
       window.removeEventListener('keydown', onKey);
     };
   }, [onClose]);
+}
 
-  const value = mode === 'all' ? allowed : parseAmount(text, g.currency as CurrencyCode);
-  const error = amountError(value, mode === 'all' ? String(allowed) : text, allowed, g.currency);
-  const name = nameOf(g, toId);
-
-  const pick = (id: string) => {
-    setToId(id);
-    setMode('all');
-    setText(amountToInput(allowedTo(balances, settlements, meId, id), g.currency as CurrencyCode));
-    mark.reset();
+/** Получатель и сумма: «Всё» — всё, что можно отметить этому человеку, «Часть» — своё число. */
+function useAmount({ g, meId, balances, settlements, request }: Omit<Props, 'onClose'>) {
+  const cur = g.currency as CurrencyCode;
+  const [toId, setToId] = useState(request.toId);
+  const allowed = allowedTo(balances, settlements, meId, toId);
+  const [mode, setMode] = useState<Mode>(() => (request.amount !== undefined && request.amount < allowed ? 'part' : 'all'));
+  const [text, setText] = useState(() => amountToInput(Math.min(request.amount ?? allowed, allowed), cur));
+  const shown = mode === 'all' ? amountToInput(allowed, cur) : text;
+  const value = mode === 'all' ? allowed : parseAmount(text, cur);
+  return {
+    toId,
+    allowed,
+    mode,
+    text: shown,
+    value,
+    error: amountError(value, shown, allowed, g.currency),
+    pick: (id: string) => {
+      setToId(id);
+      setMode('all');
+    },
+    setMode: (m: Mode) => {
+      if (m === 'part') setText(amountToInput(allowed, cur));
+      setMode(m);
+    },
+    setText: (t: string) => {
+      setMode('part');
+      setText(t);
+    },
   };
-  const submit = (e: FormEvent) => {
+}
+
+/**
+ * M07 «Отметить перевод»: шит снизу на телефоне, окно по центру на компьютере.
+ * Деньги приложение не переводит — должник отмечает, получатель потом подтверждает.
+ */
+export function SettleSheet(props: Props) {
+  const { g, meId, balances, settlements, onClose } = props;
+  const recipients = balances.transfers.filter((t) => t.fromId === meId).map((t) => t.toId);
+  const a = useAmount(props);
+  const [comment, setComment] = useState('');
+  const [touched, setTouched] = useState(false);
+  const mark = useMarkSettlement(g.id);
+  const toast = useToast();
+  const titleId = useId();
+  useEscape(onClose);
+  const name = nameOf(g, a.toId);
+  const ok = a.error === null && a.value !== null;
+
+  const submit = (e: SyntheticEvent) => {
     e.preventDefault();
     setTouched(true);
-    if (error !== null || value === null) return;
+    if (a.error !== null || a.value === null) return;
     mark.mutate(
-      { toId, amount: value, comment: comment.trim() || null },
+      { toId: a.toId, amount: a.value, comment: comment.trim() || null },
       {
         onSuccess: () => {
           toast(`Перевод отмечен. ${name} подтвердит, когда деньги придут.`);
@@ -106,24 +129,22 @@ export function SettleSheet({ g, meId, balances, settlements, request, onClose }
           </button>
         </div>
         <OweLine g={g} meId={meId} balances={balances} />
-        {recipients.length > 1 && <RecipientPicker g={g} recipients={recipients} value={toId} balances={balances} meId={meId} onPick={pick} />}
+        {recipients.length > 1 && (
+          <RecipientPicker
+            g={g}
+            recipients={recipients}
+            value={a.toId}
+            balances={balances}
+            meId={meId}
+            onPick={(id) => {
+              a.pick(id);
+              mark.reset();
+            }}
+          />
+        )}
         <p className="settle-sheet__intro">{fill(copy.settlement.markIntro, { name })}</p>
-        <AmountField
-          currency={g.currency}
-          mode={mode}
-          allowed={allowed}
-          text={mode === 'all' ? amountToInput(allowed, g.currency as CurrencyCode) : text}
-          error={touched ? error : null}
-          onMode={(m) => {
-            setMode(m);
-            if (m === 'part') setText(amountToInput(allowed, g.currency as CurrencyCode));
-          }}
-          onText={(t) => {
-            setMode('part');
-            setText(t);
-          }}
-        />
-        <Summary g={g} owe={transferAmount(balances, meId, toId)} pending={pendingFrom(settlements, meId, toId)} marking={error === null ? (value ?? 0) : 0} name={name} />
+        <AmountField currency={g.currency} mode={a.mode} allowed={a.allowed} text={a.text} error={touched ? a.error : null} onMode={a.setMode} onText={a.setText} />
+        <Summary g={g} owe={transferAmount(balances, meId, a.toId)} pending={pendingFrom(settlements, meId, a.toId)} marking={ok ? (a.value ?? 0) : 0} name={name} />
         <label className="field">
           <span className="field__label">Комментарий, если нужно</span>
           <input
@@ -142,9 +163,9 @@ export function SettleSheet({ g, meId, balances, settlements, request, onClose }
           </p>
         )}
         <div className="settle-sheet__foot">
-          <button type="submit" className="btn btn--primary btn--main" disabled={mark.isPending || allowed <= 0}>
+          <button type="submit" className="btn btn--primary btn--main" disabled={mark.isPending || a.allowed <= 0}>
             {fill(copy.settlement.markButton, { amount: '' }).trim()}
-            {error === null && value !== null && <span className="n">{moneyCur(value, g.currency)}</span>}
+            {ok && <span className="n">{moneyCur(a.value ?? 0, g.currency)}</span>}
           </button>
           <p className="hint-sm settle-sheet__hint">{copy.settlement.notCountedYet}</p>
         </div>

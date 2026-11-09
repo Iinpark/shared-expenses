@@ -219,7 +219,7 @@ function StatusPill({ c, p }: { c: RowCtx; p: SettlementPayload }) {
     case 'rejected':
       return <span className="pill pill--rejected feed-pill">деньги не пришли</span>;
     case 'cancelled':
-      return <span className="pill feed-pill">отметка отменена</span>;
+      return <span className="pill pill--muted feed-pill">отметка отменена</span>;
     case undefined:
       return null;
   }
@@ -243,7 +243,7 @@ function SettlementRow({ c, e, p }: { c: RowCtx; e: GroupEventDto; p: Settlement
       meta={pairText(c, p.settlement.fromId, p.settlement.toId)}
       extra={
         <>
-          {p.settlement.comment && <span className="feed-row__meta">«{p.settlement.comment}»</span>}
+          {p.type === 'settlement_created' && p.settlement.comment && <span className="feed-row__meta">«{p.settlement.comment}»</span>}
           {p.type === 'settlement_created' && <StatusPill c={c} p={p} />}
         </>
       }

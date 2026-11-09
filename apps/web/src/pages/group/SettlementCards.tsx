@@ -30,15 +30,14 @@ function useDecide(c: SettleCtx) {
   const toast = useToast();
   const run = (s: SettlementDto, action: SettlementDecision, done: string) => {
     if (action === 'confirm') c.expectOwn(true);
-    decide.mutate(
-      { id: s.id, action },
-      {
-        onSuccess: () => {
-          toast(done);
-        },
-        onError: () => {
-          c.expectOwn(false);
-        },
+    // mutateAsync, а не колбэки mutate: карточка исчезает раньше, чем мутация закончится
+    // (погашение уже не ожидающее), а колбэки mutate у размонтированного компонента не вызываются.
+    decide.mutateAsync({ id: s.id, action }).then(
+      () => {
+        toast(done);
+      },
+      () => {
+        c.expectOwn(false);
       },
     );
   };
