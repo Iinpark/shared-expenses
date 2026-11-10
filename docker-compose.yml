@@ -26,5 +26,32 @@ services:
       timeout: 3s
       retries: 20
 
+  # Само приложение: API и клиент на одном порту. Для разработки его не поднимают —
+  # `pnpm infra:up` запускает только postgres и mailpit, а сервер и клиент идут через `pnpm dev`.
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://app:app@postgres:5432/shared_expenses
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      # Адрес, который видит браузер: для ссылок в письмах и CORS.
+      WEB_ORIGIN: http://localhost:8080
+    ports:
+      # 8080, а не 3000, чтобы не мешать `pnpm dev`, если он запущен рядом.
+      - "8080:3000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
 volumes:
   pgdata:
+  uploads:
