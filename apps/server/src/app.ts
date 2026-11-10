@@ -14,6 +14,7 @@ import { settlementRoutes } from './settlements/routes.js';
 import { registerErrorHandler } from './lib/errors.js';
 import { RealtimeHub } from './realtime/hub.js';
 import { realtimeRoutes } from './realtime/routes.js';
+import { registerWebStatic } from './web/static.js';
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({
@@ -29,7 +30,8 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.decorateRequest('user', null);
   app.addHook('onRequest', async (req) => {
     // /api/health должен ответить «degraded», а не 500, даже если база лежит.
-    if (req.url === '/api/health') return;
+    // Статике клиента пользователь не нужен — не ходим за сессией в базу на каждый файл.
+    if (req.url === '/api/health' || !req.url.startsWith('/api/')) return;
     req.user = await loadUser(req.cookies[SESSION_COOKIE]);
   });
 
@@ -57,6 +59,8 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
     await hub.stop();
   });
   await app.register((instance) => realtimeRoutes(instance, hub));
+
+  if (config.webDist) await registerWebStatic(app, config.webDist);
 
   return app;
 }

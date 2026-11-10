@@ -4,25 +4,33 @@
 
 Тестовое задание (задание 6). Почему проект устроен именно так — в [docs/DECISIONS.md](docs/DECISIONS.md), ход работы во времени — в [docs/WORKLOG.md](docs/WORKLOG.md).
 
-## Что нужно установить
-
-- Node.js 24+
-- pnpm (через corepack: `corepack enable`)
-- Docker с Docker Compose
-
 ## Запуск
+
+Нужен только Docker с Docker Compose.
+
+```bash
+docker compose up --build
+```
+
+Откройте http://localhost:8080. Письма, которые отправляет приложение (коды входа, приглашения, напоминания), видны в Mailpit: http://localhost:8025.
+
+Поднимаются три контейнера: Postgres, Mailpit и само приложение (сервер раздаёт API и собранный клиент с одного порта, миграции применяются при старте). Первая сборка образа занимает пару минут. Остановить: `docker compose down`, удалить и данные: `docker compose down -v`.
+
+## Запуск для разработки
+
+С горячей перезагрузкой. Нужны Node.js 24+ и pnpm (через corepack: `corepack enable`).
 
 ```bash
 pnpm install
-pnpm infra:up   # Postgres (порт 5433) и Mailpit (SMTP 1025, веб 8025)
+pnpm infra:up   # только Postgres (порт 5433) и Mailpit (SMTP 1025, веб 8025)
 pnpm dev        # сервер на :3000 и клиент на :5173
 ```
 
-Откройте http://localhost:5173. Письма, которые отправляет приложение, видны в Mailpit: http://localhost:8025.
-
-Файл `.env` не обязателен: значения по умолчанию совпадают с `docker-compose.yml`. Список переменных — в [.env.example](.env.example).
+Откройте http://localhost:5173. Файл `.env` не обязателен: значения по умолчанию совпадают с `docker-compose.yml`. Список переменных — в [.env.example](.env.example).
 
 ## Проверки
+
+Для них нужен запуск для разработки (Node.js и pnpm).
 
 ```bash
 pnpm check      # всё сразу: типы, линт, knip, тесты (как в CI)
@@ -56,7 +64,7 @@ pnpm e2e        # Playwright: два браузера одновременно, 
 
 ## Как попробовать
 
-1. Откройте http://localhost:5173, введите любую почту, например `anya@example.com`.
+1. Откройте http://localhost:8080 (или :5173 при запуске для разработки), введите любую почту, например `anya@example.com`.
 2. Код придёт в Mailpit: http://localhost:8025.
 3. Создайте группу и позовите кого-нибудь по почте: письмо-приглашение тоже будет в Mailpit.
 4. Чтобы войти вторым участником, откройте ссылку-приглашение в другом браузере или в окне инкогнито.

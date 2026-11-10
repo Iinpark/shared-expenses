@@ -12,6 +12,8 @@ export const config = {
   reminderIntervalMs: Number(process.env.REMINDER_INTERVAL_MS ?? 60_000),
   /** Папка для файлов чеков. */
   uploadDir: process.env.UPLOAD_DIR ?? fileURLToPath(new URL('../uploads', import.meta.url)),
+  /** Папка собранного клиента. Если задана, сервер раздаёт его сам (так работает образ Docker); в dev клиент отдаёт Vite. */
+  webDist: process.env.WEB_DIST,
   isProduction: process.env.NODE_ENV === 'production',
   smtp: {
     host: process.env.SMTP_HOST ?? 'localhost',

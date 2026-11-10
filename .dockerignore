@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+.git
+.github
+.claude
+.env
+.env.*
+apps/server/uploads
+e2e
+docs
+test-results
+**/.DS_Store
